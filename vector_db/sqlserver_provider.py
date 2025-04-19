@@ -107,6 +107,6 @@ class SQLServerProvider(DBProvider):
             batch = docs[i : i + batch_size]
             try:
                 self.db.add_documents(batch)
-            except Exception as e:
+            except Exception:
                 logger.exception("Failed to insert batch starting at index %s", i)
                 raise

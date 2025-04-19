@@ -41,7 +41,7 @@ class RedisProvider(DBProvider):
         try:
             self.redis_client = redis.from_url(self.url)
             self.redis_client.ping()
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to connect to Redis at %s", self.url)
             raise
 

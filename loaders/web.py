@@ -54,7 +54,7 @@ class WebLoader:
         try:
             loader = WebBaseLoader(urls)
             docs = loader.load()
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to load URLs via WebBaseLoader")
             raise
 
