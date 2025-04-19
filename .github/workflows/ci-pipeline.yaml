@@ -27,14 +27,20 @@ jobs:
       image_tag: ${{ steps.meta.outputs.sha_tag }}
     steps:
       - uses: actions/checkout@v4
+
       - name: Generate tag
         id: meta
         run: echo "sha_tag=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
 
       - name: Build Docker image
-        run: docker build -f Containerfile -t test-image:${{ steps.meta.outputs.sha_tag }} .
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Containerfile
+          load: true
+          tags: test-image:${{ steps.meta.outputs.sha_tag }}
 
-      - name: Save Docker image to tar
+      - name: Save image as artifact
         run: docker save test-image:${{ steps.meta.outputs.sha_tag }} -o image.tar
 
       - name: Upload image artifact
@@ -50,32 +56,6 @@ jobs:
       fail-fast: false
       matrix:
         db: [pgvector, redis, elasticsearch, qdrant]
-    services:
-      pgvector:
-        image: ankane/pgvector
-        ports:
-          - 5432:5432
-        env:
-          POSTGRES_USER: user
-          POSTGRES_PASSWORD: pass
-          POSTGRES_DB: mydb
-      redis:
-        image: redis/redis-stack-server:6.2.6-v19
-        ports:
-          - 6379:6379
-      elasticsearch:
-        image: elasticsearch:8.11.1
-        ports:
-          - 9200:9200
-        env:
-          discovery.type: single-node
-          xpack.security.enabled: true
-          ELASTIC_PASSWORD: changeme
-          ES_JAVA_OPTS: "-Xms512m -Xmx512m"
-      qdrant:
-        image: qdrant/qdrant
-        ports:
-          - 6333:6333
 
     steps:
       - uses: actions/checkout@v4
@@ -88,6 +68,41 @@ jobs:
 
       - name: Load Docker image
         run: docker load -i image.tar
+
+      - name: Start PGVector
+        if: matrix.db == 'pgvector'
+        run: |
+          docker run -d --name pgvector-test \
+            -e POSTGRES_USER=user \
+            -e POSTGRES_PASSWORD=pass \
+            -e POSTGRES_DB=mydb \
+            -p 5432:5432 \
+            ankane/pgvector
+
+      - name: Start Redis
+        if: matrix.db == 'redis'
+        run: |
+          docker run -d --name redis-test \
+            -p 6379:6379 \
+            redis/redis-stack-server:6.2.6-v19
+
+      - name: Start Elasticsearch
+        if: matrix.db == 'elasticsearch'
+        run: |
+          docker run -d --name es-test \
+            -e "discovery.type=single-node" \
+            -e "xpack.security.enabled=true" \
+            -e "ELASTIC_PASSWORD=changeme" \
+            -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+            -p 9200:9200 \
+            elasticsearch:8.11.1
+
+      - name: Start Qdrant
+        if: matrix.db == 'qdrant'
+        run: |
+          docker run -d --name qdrant-test \
+            -p 6333:6333 \
+            qdrant/qdrant
 
       - name: Wait for DB to start
         run: sleep 30
@@ -102,6 +117,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Log in to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
       - name: Download image artifact
         uses: actions/download-artifact@v4
         with:
@@ -110,13 +132,6 @@ jobs:
 
       - name: Load Docker image
         run: docker load -i image.tar
-
-      - name: Log in to Quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Tag and push image
         run: |
