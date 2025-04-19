@@ -108,7 +108,10 @@ jobs:
         run: sleep 30
 
       - name: Run embed job
-        run: docker run --rm --network host test-image:${{ needs.build.outputs.image_tag }}
+        run: |
+          docker run --rm --network host \
+            -e DB_TYPE=${{ matrix.db }} \
+            test-image:${{ needs.build.outputs.image_tag }}
 
   release:
     if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
