@@ -1,3 +1,4 @@
+import logging
 from typing import List, Optional
 
 from langchain_core.documents import Document
@@ -6,6 +7,8 @@ from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
 
 from vector_db.db_provider import DBProvider
+
+logger = logging.getLogger(__name__)
 
 
 class QdrantProvider(DBProvider):
@@ -31,6 +34,7 @@ class QdrantProvider(DBProvider):
     def __init__(self, url: str, collection: str, api_key: Optional[str] = None):
         super().__init__()
         self.collection = collection
+        self.url = url
 
         self.client = QdrantClient(
             url=url,
@@ -46,11 +50,17 @@ class QdrantProvider(DBProvider):
             embedding=self.embeddings,
         )
 
+        logger.info(
+            "Connected to Qdrant instance at %s (collection: %s)",
+            self.url,
+            self.collection,
+        )
+
     def _collection_exists(self) -> bool:
         return self.client.collection_exists(self.collection)
 
     def _create_collection(self) -> None:
-        vector_size = self.embeddings.embed_query("test").__len__()
+        vector_size = len(self.embeddings.embed_query("test"))
         self.client.recreate_collection(
             collection_name=self.collection,
             vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
