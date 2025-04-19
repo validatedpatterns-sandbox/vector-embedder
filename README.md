@@ -1,5 +1,7 @@
 # vector-embedder
 
+[![Docker Repository on Quay](https://quay.io/repository/dminnear/vector-embedder/status "Docker Repository on Quay")](https://quay.io/repository/dminnear/vector-embedder)
+
 **vector-embedder** is a flexible, language-agnostic document ingestion pipeline that generates and stores vector embeddings from structured and unstructured content.
 
 It supports embedding content from Git repositories (via glob patterns), web URLs, and various file types into multiple vector database backends. It runs locally, in containers, or as a Kubernetes/OpenShift job.
