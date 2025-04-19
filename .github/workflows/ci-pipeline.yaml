@@ -110,6 +110,7 @@ jobs:
       - name: Run embed job
         run: |
           docker run --rm --network host \
+            -e LOG_LEVEL=debug \
             -e DB_TYPE=${{ matrix.db }} \
             test-image:${{ needs.build.outputs.image_tag }}
 

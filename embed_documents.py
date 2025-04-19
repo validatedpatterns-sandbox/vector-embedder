@@ -11,11 +11,7 @@ from loaders.git import GitLoader
 from loaders.pdf import PDFLoader
 from loaders.web import WebLoader
 
-# Load configuration
 config = Config.load()
-
-# Set up logging
-logging.basicConfig(level=config.log_level)
 logger = logging.getLogger(__name__)
 
 
