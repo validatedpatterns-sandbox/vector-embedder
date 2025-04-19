@@ -1,4 +1,5 @@
 from typing import List
+
 from langchain_core.documents import Document
 from langchain_elasticsearch.vectorstores import ElasticsearchStore
 
