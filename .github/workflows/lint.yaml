@@ -25,4 +25,4 @@ jobs:
         run: isort --check-only .
 
       - name: Run Ruff
-        run: ruff .
+        run: ruff check .
