@@ -8,7 +8,7 @@ on:
       - 'v*'
 
 env:
-  IMAGE_NAME: quay.io/yourorg/vector-embedder
+  IMAGE_NAME: quay.io/dminnear/vector-embedder
 
 jobs:
   build-and-push:
