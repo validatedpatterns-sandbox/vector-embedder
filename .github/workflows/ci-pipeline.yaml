@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        db: [pgvector, redis, elasticsearch, qdrant]
+        db: [pgvector, redis, elastic, qdrant]
 
     steps:
       - uses: actions/checkout@v4
@@ -87,7 +87,7 @@ jobs:
             redis/redis-stack-server:6.2.6-v19
 
       - name: Start Elasticsearch
-        if: matrix.db == 'elasticsearch'
+        if: matrix.db == 'elastic'
         run: |
           docker run -d --name es-test \
             -e "discovery.type=single-node" \
