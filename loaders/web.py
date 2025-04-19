@@ -1,12 +1,11 @@
+import logging
 from typing import List
 
-from pathlib import Path
-from langchain_core.documents import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
+from langchain_core.documents import Document
 
 from config import Config
-import logging
 
 logger = logging.getLogger(__name__)
 

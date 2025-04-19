@@ -1,5 +1,7 @@
 from typing import List
+
 from langchain_core.documents import Document
+
 from vector_db.db_provider import DBProvider
 
 

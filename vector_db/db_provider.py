@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
+from langchain_huggingface import HuggingFaceEmbeddings
 
 
 class DBProvider(ABC):

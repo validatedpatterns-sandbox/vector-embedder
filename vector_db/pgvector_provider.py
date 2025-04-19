@@ -1,6 +1,8 @@
 from typing import List
-from langchain_postgres import PGVector
+
 from langchain_core.documents import Document
+from langchain_postgres import PGVector
+
 from vector_db.db_provider import DBProvider
 
 
