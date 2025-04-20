@@ -1,9 +1,13 @@
+import logging
 from typing import List
+from urllib.parse import urlparse
 
 from langchain_core.documents import Document
 from langchain_postgres import PGVector
 
 from vector_db.db_provider import DBProvider
+
+logger = logging.getLogger(__name__)
 
 
 class PGVectorProvider(DBProvider):
@@ -27,10 +31,21 @@ class PGVectorProvider(DBProvider):
 
     def __init__(self, url: str, collection_name: str):
         super().__init__()
+
         self.db = PGVector(
             connection=url,
             collection_name=collection_name,
             embeddings=self.embeddings,
+        )
+
+        parsed = urlparse(url)
+        postgres_location = (
+            f"{parsed.hostname}:{parsed.port or 5432}/{parsed.path.lstrip('/')}"
+        )
+        logger.info(
+            "Connected to PGVector at %s (collection: %s)",
+            postgres_location,
+            collection_name,
         )
 
     def add_documents(self, docs: List[Document]) -> None:

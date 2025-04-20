@@ -1,4 +1,5 @@
 import logging
+import shutil
 import subprocess
 from pathlib import Path
 from typing import List
@@ -14,19 +15,17 @@ logger = logging.getLogger(__name__)
 
 class GitLoader:
     """
-    Clones repositories and loads documents based on glob patterns using PDF and text loaders.
+    Loads and processes documents from Git repositories based on configured glob patterns.
 
-    For each repository defined in `config.repo_sources`, this loader:
-        - Clones the repo to a local folder in TEMP_DIR/source_repo/
-        - Resolves the configured globs relative to the repo root
-        - Loads and chunks `.pdf` files using PDFLoader
-        - Loads and chunks all other supported text files using TextLoader
-
-    This loader returns all chunked `Document` objects so the caller can decide
-    how and when to add them to a vector store.
+    For each configured repository, this loader:
+    - Clones or pulls the latest repo into a temporary folder
+    - Applies the configured glob patterns to find matching files
+    - Loads PDF files using PDFLoader
+    - Loads supported text files using TextLoader
+    - Returns all chunked LangChain Document objects (does NOT push to DB)
 
     Attributes:
-        config (Config): The configuration object containing repo info, chunk settings, etc.
+        config (Config): Application config including temp paths, glob patterns, and chunking rules.
 
     Example:
         >>> config = Config.load()
@@ -43,13 +42,15 @@ class GitLoader:
 
     def load(self) -> List[Document]:
         """
-        Clones all configured repos, applies glob patterns, loads and chunks matched documents.
+        Loads and chunks documents from all configured Git repos.
+
+        This includes:
+        - Cloning or updating each Git repo
+        - Matching glob patterns to find relevant files
+        - Loading and chunking documents using appropriate loaders
 
         Returns:
-            List[Document]: All chunked documents loaded from the matched files in all repositories.
-
-        Raises:
-            RuntimeError: If cloning or file loading fails.
+            List[Document]: Chunked LangChain documents from all matched files.
         """
         all_chunks: List[Document] = []
 
@@ -59,9 +60,10 @@ class GitLoader:
             repo_name = repo_url.rstrip("/").split("/")[-1].replace(".git", "")
             repo_path = self.base_path / repo_name
 
-            self._clone_repo(repo_url, repo_path)
+            self._ensure_repo_up_to_date(repo_url, repo_path)
 
             matched_files = self._collect_files(repo_path, globs)
+            matched_files = [f for f in matched_files if f.is_file()]
 
             pdf_files = [f for f in matched_files if f.suffix.lower() == ".pdf"]
             text_files = [f for f in matched_files if f.suffix.lower() != ".pdf"]
@@ -78,11 +80,24 @@ class GitLoader:
 
         return all_chunks
 
-    def _clone_repo(self, url: str, dest: Path) -> None:
+    def _ensure_repo_up_to_date(self, url: str, dest: Path) -> None:
         if dest.exists():
-            logger.info("Repo already cloned at %s, skipping", dest)
-            return
+            logger.info("Repo already cloned at %s, attempting pull...", dest)
+            try:
+                subprocess.run(
+                    ["git", "-C", str(dest), "pull"],
+                    check=True,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                return
+            except subprocess.CalledProcessError:
+                logger.warning("git pull failed for %s, removing and recloning...", url)
+                shutil.rmtree(dest)
 
+        self._clone_repo(url, dest)
+
+    def _clone_repo(self, url: str, dest: Path) -> None:
         logger.info("Cloning repository %s to %s", url, dest)
         try:
             subprocess.run(

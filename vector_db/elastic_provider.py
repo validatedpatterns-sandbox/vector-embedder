@@ -1,9 +1,12 @@
+import logging
 from typing import List
 
 from langchain_core.documents import Document
 from langchain_elasticsearch.vectorstores import ElasticsearchStore
 
 from vector_db.db_provider import DBProvider
+
+logger = logging.getLogger(__name__)
 
 
 class ElasticProvider(DBProvider):
@@ -28,6 +31,7 @@ class ElasticProvider(DBProvider):
 
     def __init__(self, url: str, password: str, index: str, user: str):
         super().__init__()
+
         self.db = ElasticsearchStore(
             embedding=self.embeddings,
             es_url=url,
@@ -35,6 +39,8 @@ class ElasticProvider(DBProvider):
             es_password=password,
             index_name=index,
         )
+
+        logger.info("Connected to Elasticsearch at %s (index: %s)", url, index)
 
     def add_documents(self, docs: List[Document]) -> None:
         """

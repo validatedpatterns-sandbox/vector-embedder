@@ -59,6 +59,14 @@ class SQLServerProvider(DBProvider):
         self.connection_string = self._build_connection_string(self.database)
 
         self._ensure_database_exists()
+
+        logger.info(
+            "Connected to SQL Server at %s:%s, database: %s",
+            self.host,
+            self.port,
+            self.database,
+        )
+
         self.db = SQLServer_VectorStore(
             connection_string=self.connection_string,
             embedding_function=self.embeddings,

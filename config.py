@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from dataclasses import dataclass
 from typing import Dict, List
@@ -97,12 +98,27 @@ class Config:
         load_dotenv()
         get = Config._get_required_env_var
 
+        # Initialize logger
+        log_level_name = get("LOG_LEVEL").lower()
+        log_levels = {
+            "debug": 10,
+            "info": 20,
+            "warning": 30,
+            "error": 40,
+            "critical": 50,
+        }
+        if log_level_name not in log_levels:
+            raise ValueError(
+                f"Invalid LOG_LEVEL: '{log_level_name}'. Must be one of: {', '.join(log_levels)}"
+            )
+        log_level = log_levels[log_level_name]
+        logging.basicConfig(level=log_level)
+        logger = logging.getLogger(__name__)
+        logger.debug("Logging initialized at level: %s", log_level_name.upper())
+
+        # Initialize db
         db_type = get("DB_TYPE")
         db_provider = Config._init_db_provider(db_type)
-
-        chunk_size = int(get("CHUNK_SIZE"))
-        chunk_overlap = int(get("CHUNK_OVERLAP"))
-        temp_dir = get("TEMP_DIR")
 
         # Web URLs
         web_sources_raw = get("WEB_SOURCES")
@@ -118,20 +134,10 @@ class Config:
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid REPO_SOURCES JSON: {e}") from e
 
-        # Logging
-        log_level_name = get("LOG_LEVEL").lower()
-        log_levels = {
-            "debug": 10,
-            "info": 20,
-            "warning": 30,
-            "error": 40,
-            "critical": 50,
-        }
-        if log_level_name not in log_levels:
-            raise ValueError(
-                f"Invalid LOG_LEVEL: '{log_level_name}'. Must be one of: {', '.join(log_levels)}"
-            )
-        log_level = log_levels[log_level_name]
+        # Misc
+        chunk_size = int(get("CHUNK_SIZE"))
+        chunk_overlap = int(get("CHUNK_OVERLAP"))
+        temp_dir = get("TEMP_DIR")
 
         return Config(
             db_provider=db_provider,

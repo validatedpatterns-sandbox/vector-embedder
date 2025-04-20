@@ -1,0 +1,152 @@
+name: CI Pipeline
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags:
+      - "v*"
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install black isort ruff
+      - run: black --check .
+      - run: isort --check-only .
+      - run: ruff check .
+
+  build:
+    runs-on: ubuntu-latest
+    needs: lint
+    outputs:
+      image_tag: ${{ steps.meta.outputs.sha_tag }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Generate tag
+        id: meta
+        run: echo "sha_tag=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Containerfile
+          load: true
+          tags: test-image:${{ steps.meta.outputs.sha_tag }}
+
+      - name: Save image as artifact
+        run: docker save test-image:${{ steps.meta.outputs.sha_tag }} -o image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-image
+          path: image.tar
+
+  test:
+    needs: [lint, build]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: [pgvector, redis, elastic, qdrant]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-image
+          path: .
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      - name: Start PGVector
+        if: matrix.db == 'pgvector'
+        run: |
+          docker run -d --name pgvector-test \
+            -e POSTGRES_USER=user \
+            -e POSTGRES_PASSWORD=pass \
+            -e POSTGRES_DB=mydb \
+            -p 5432:5432 \
+            ankane/pgvector
+
+      - name: Start Redis
+        if: matrix.db == 'redis'
+        run: |
+          docker run -d --name redis-test \
+            -p 6379:6379 \
+            redis/redis-stack-server:6.2.6-v19
+
+      - name: Start Elasticsearch
+        if: matrix.db == 'elastic'
+        run: |
+          docker run -d --name es-test \
+            -e "discovery.type=single-node" \
+            -e "xpack.security.enabled=true" \
+            -e "ELASTIC_PASSWORD=changeme" \
+            -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+            -p 9200:9200 \
+            elasticsearch:8.11.1
+
+      - name: Start Qdrant
+        if: matrix.db == 'qdrant'
+        run: |
+          docker run -d --name qdrant-test \
+            -p 6333:6333 \
+            qdrant/qdrant
+
+      - name: Wait for DB to start
+        run: sleep 30
+
+      - name: Run embed job
+        run: |
+          docker run --rm --network host \
+            -e LOG_LEVEL=debug \
+            -e DB_TYPE=${{ matrix.db }} \
+            test-image:${{ needs.build.outputs.image_tag }}
+
+  release:
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    needs: [lint, build, test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: test-image
+          path: .
+
+      - name: Load Docker image
+        run: docker load -i image.tar
+
+      - name: Tag and push image
+        run: |
+          docker tag test-image:${{ needs.build.outputs.image_tag }} quay.io/dminnear/vector-embedder:${{ needs.build.outputs.image_tag }}
+
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            docker tag test-image:${{ needs.build.outputs.image_tag }} quay.io/dminnear/vector-embedder:${GITHUB_REF#refs/tags/}
+            docker push quay.io/dminnear/vector-embedder:${GITHUB_REF#refs/tags/}
+          elif [[ $GITHUB_REF == refs/heads/main ]]; then
+            docker tag test-image:${{ needs.build.outputs.image_tag }} quay.io/dminnear/vector-embedder:latest
+            docker push quay.io/dminnear/vector-embedder:latest
+          fi
+
+          docker push quay.io/dminnear/vector-embedder:${{ needs.build.outputs.image_tag }}

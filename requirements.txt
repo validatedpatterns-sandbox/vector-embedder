@@ -7,6 +7,7 @@ langchain-postgres==0.0.14
 langchain-qdrant==0.2.0
 langchain-sqlserver==0.1.1
 langchain==0.3.23
+psycopg[binary]==3.2.6
 psycopg2-binary==2.9.10
 pyodbc==5.2.0
 pypdf==5.4.0
@@ -14,4 +15,4 @@ python-dotenv==1.1.0
 qdrant-client==1.13.3
 redis==5.2.1
 sentence-transformers==4.1.0
-unstructured==0.17.2
+unstructured[md]==0.17.2
