@@ -43,6 +43,21 @@ class Config:
         return value
 
     @staticmethod
+    def _parse_log_level(log_level_name: str) -> int:
+        log_levels = {
+            "debug": logging.DEBUG,
+            "info": logging.INFO,
+            "warning": logging.WARNING,
+            "error": logging.ERROR,
+            "critical": logging.CRITICAL,
+        }
+        if log_level_name not in log_levels:
+            raise ValueError(
+                f"Invalid LOG_LEVEL: '{log_level_name}'. Must be one of: {', '.join(log_levels.keys())}"
+            )
+        return log_levels[log_level_name]
+
+    @staticmethod
     def _init_db_provider(db_type: str) -> DBProvider:
         """
         Initialize the correct DBProvider subclass based on DB_TYPE.
@@ -99,22 +114,10 @@ class Config:
         get = Config._get_required_env_var
 
         # Initialize logger
-        log_level_name = get("LOG_LEVEL").lower()
-        log_levels = {
-            "debug": 10,
-            "info": 20,
-            "warning": 30,
-            "error": 40,
-            "critical": 50,
-        }
-        if log_level_name not in log_levels:
-            raise ValueError(
-                f"Invalid LOG_LEVEL: '{log_level_name}'. Must be one of: {', '.join(log_levels)}"
-            )
-        log_level = log_levels[log_level_name]
+        log_level = Config._parse_log_level(get("LOG_LEVEL").lower())
         logging.basicConfig(level=log_level)
         logger = logging.getLogger(__name__)
-        logger.debug("Logging initialized at level: %s", log_level_name.upper())
+        logger.debug("Logging initialized at level: %s", log_level.upper())
 
         # Initialize db
         db_type = get("DB_TYPE")
