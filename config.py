@@ -45,11 +45,11 @@ class Config:
     @staticmethod
     def _parse_log_level(log_level_name: str) -> int:
         log_levels = {
-            "debug": logging.DEBUG,
-            "info": logging.INFO,
-            "warning": logging.WARNING,
-            "error": logging.ERROR,
-            "critical": logging.CRITICAL,
+            "DEBUG": logging.DEBUG,
+            "INFO": logging.INFO,
+            "WARNING": logging.WARNING,
+            "ERROR": logging.ERROR,
+            "CRITICAL": logging.CRITICAL,
         }
         if log_level_name not in log_levels:
             raise ValueError(
@@ -125,10 +125,10 @@ class Config:
         get = Config._get_required_env_var
 
         # Initialize logger
-        log_level = Config._parse_log_level(get("LOG_LEVEL").lower())
-        logging.basicConfig(level=log_level)
+        log_level = get("LOG_LEVEL").upper()
+        logging.basicConfig(level=Config._parse_log_level(log_level))
         logger = logging.getLogger(__name__)
-        logger.debug("Logging initialized at level: %s", log_level.upper())
+        logger.debug("Logging initialized at level: %s", log_level)
 
         # Initialize db
         db_type = get("DB_TYPE")
