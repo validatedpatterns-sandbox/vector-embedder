@@ -15,6 +15,7 @@ class RedisProvider(DBProvider):
     Redis-based vector DB provider using RediSearch and LangChain's Redis integration.
 
     Args:
+        embedding_model (str): Embedding model to use
         url (str): Redis connection string (e.g. redis://localhost:6379)
         index (str): RediSearch index name (must be provided via .env)
         schema (str): Path to RediSearch schema YAML file (must be provided via .env)
@@ -24,6 +25,7 @@ class RedisProvider(DBProvider):
 
     Example:
         >>> provider = RedisProvider(
+        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
         ...     url="redis://localhost:6379",
         ...     index="docs",
         ...     schema="redis_schema.yaml"
@@ -31,8 +33,8 @@ class RedisProvider(DBProvider):
         >>> provider.add_documents(chunks)
     """
 
-    def __init__(self, url: str, index: str, schema: str):
-        super().__init__()
+    def __init__(self, embedding_model: str, url: str, index: str, schema: str):
+        super().__init__(embedding_model)
         self.url = url
         self.index = index
         self.schema = schema

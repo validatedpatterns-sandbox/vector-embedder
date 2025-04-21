@@ -15,6 +15,7 @@ class SQLServerProvider(DBProvider):
     SQL Server-based vector DB provider using LangChain's SQLServer_VectorStore.
 
     Args:
+        embedding_model (str): Embedding model to use
         host (str): Hostname of the SQL Server
         port (str): Port number
         user (str): SQL login username
@@ -25,6 +26,7 @@ class SQLServerProvider(DBProvider):
 
     Example:
         >>> provider = SQLServerProvider(
+        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
         ...     host="localhost",
         ...     port="1433",
         ...     user="sa",
@@ -38,6 +40,7 @@ class SQLServerProvider(DBProvider):
 
     def __init__(
         self,
+        embedding_model: str,
         host: str,
         port: str,
         user: str,
@@ -46,7 +49,7 @@ class SQLServerProvider(DBProvider):
         table: str,
         driver: str,
     ) -> None:
-        super().__init__()
+        super().__init__(embedding_model)
 
         self.host = host
         self.port = port
