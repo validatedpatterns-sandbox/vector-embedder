@@ -124,16 +124,14 @@ class Config:
         db_provider = Config._init_db_provider(db_type)
 
         # Web URLs
-        web_sources_raw = get("WEB_SOURCES")
         try:
-            web_sources = json.loads(web_sources_raw)
+            web_sources = json.loads(get("WEB_SOURCES"))
         except json.JSONDecodeError as e:
             raise ValueError(f"WEB_SOURCES must be a valid JSON list: {e}")
 
         # Repo sources
-        repo_sources_json = get("REPO_SOURCES")
         try:
-            repo_sources = json.loads(repo_sources_json)
+            repo_sources = json.loads(get("REPO_SOURCES"))
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid REPO_SOURCES JSON: {e}") from e
 
