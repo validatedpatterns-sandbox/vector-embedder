@@ -14,6 +14,7 @@ class ElasticProvider(DBProvider):
     Elasticsearch-based vector DB provider using LangChain's ElasticsearchStore.
 
     Args:
+        embedding_model (str): Embedding model to use
         url (str): Full URL to the Elasticsearch cluster (e.g. http://localhost:9200)
         password (str): Authentication password for the cluster
         index (str): Index name to use for vector storage
@@ -21,6 +22,7 @@ class ElasticProvider(DBProvider):
 
     Example:
         >>> provider = ElasticProvider(
+        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
         ...     url="http://localhost:9200",
         ...     password="changeme",
         ...     index="docs",
@@ -29,8 +31,10 @@ class ElasticProvider(DBProvider):
         >>> provider.add_documents(chunks)
     """
 
-    def __init__(self, url: str, password: str, index: str, user: str):
-        super().__init__()
+    def __init__(
+        self, embedding_model: str, url: str, password: str, index: str, user: str
+    ):
+        super().__init__(embedding_model)
 
         self.db = ElasticsearchStore(
             embedding=self.embeddings,

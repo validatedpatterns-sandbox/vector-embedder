@@ -16,6 +16,7 @@ class QdrantProvider(DBProvider):
     Qdrant-based vector DB provider using LangChain's QdrantVectorStore.
 
     Args:
+        embedding_model (str): Embedding model to use
         url (str): Base URL of the Qdrant service (e.g., http://localhost:6333)
         collection (str): Name of the vector collection to use or create
         api_key (Optional[str]): API key if authentication is required (optional)
@@ -24,6 +25,7 @@ class QdrantProvider(DBProvider):
 
     Example:
         >>> provider = QdrantProvider(
+        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
         ...     url="http://localhost:6333",
         ...     collection="embedded_docs",
         ...     api_key=None
@@ -31,8 +33,14 @@ class QdrantProvider(DBProvider):
         >>> provider.add_documents(docs)
     """
 
-    def __init__(self, url: str, collection: str, api_key: Optional[str] = None):
-        super().__init__()
+    def __init__(
+        self,
+        embedding_model: str,
+        url: str,
+        collection: str,
+        api_key: Optional[str] = None,
+    ):
+        super().__init__(embedding_model)
         self.collection = collection
         self.url = url
 

@@ -18,19 +18,21 @@ class PGVectorProvider(DBProvider):
     document embeddings in a PostgreSQL-compatible backend with pgvector enabled.
 
     Args:
+        embedding_model (str): Embedding model to use
         url (str): PostgreSQL connection string (e.g. postgresql://user:pass@host:5432/db)
         collection_name (str): Name of the pgvector table or collection
 
     Example:
         >>> provider = PGVectorProvider(
+        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
         ...     url="postgresql://user:pass@localhost:5432/mydb",
         ...     collection_name="documents"
         ... )
         >>> provider.add_documents(chunks)
     """
 
-    def __init__(self, url: str, collection_name: str):
-        super().__init__()
+    def __init__(self, embedding_model: str, url: str, collection_name: str):
+        super().__init__(embedding_model)
 
         self.db = PGVector(
             connection=url,

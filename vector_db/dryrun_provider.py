@@ -13,14 +13,17 @@ class DryRunProvider(DBProvider):
     chunked documents to stdout. It is useful for debugging document loading,
     chunking, and metadata before committing to a real embedding operation.
 
+    Args:
+        embedding_model (str): Embedding model to use
+
     Example:
         >>> from vector_db.dry_run_provider import DryRunProvider
-        >>> provider = DryRunProvider()
+        >>> provider = DryRunProvider("sentence-transformers/all-mpnet-base-v2")
         >>> provider.add_documents(docs)  # docs is a List[Document]
     """
 
-    def __init__(self):
-        super().__init__()  # ensures embeddings are initialized
+    def __init__(self, embedding_model: str):
+        super().__init__(embedding_model)
 
     def add_documents(self, docs: List[Document]) -> None:
         """
