@@ -39,6 +39,7 @@ class TextLoader:
         )
 
     def load(self, paths: List[Path]) -> List[Document]:
+        """Load files → Unstructured elements → grouped chunks."""
         all_chunks: List[Document] = []
 
         for path in paths:
@@ -46,33 +47,39 @@ class TextLoader:
                 logger.info("Partitioning %s", path)
                 elements = partition(filename=str(path), strategy="fast")
 
-                # 1) concatenate elements until we hit ~chunk_size chars
                 buf: List[str] = []
+                seen: set[str] = set()
                 buf_len = 0
-                for el in elements:
-                    if not getattr(el, "text", ""):
-                        continue
-                    t = el.text.strip()
-                    if not t:
-                        continue
+                fname = Path(path).name
 
-                    if buf_len + len(t) > self.config.chunk_size and buf:
+                for el in elements:
+                    text = getattr(el, "text", "").strip()
+                    if not text or text in seen:
+                        continue  # skip blanks & exact duplicates
+                    seen.add(text)
+
+                    # If starting a new group, add a tiny heading once
+                    if buf_len == 0:
+                        buf.append(f"## {fname}\n")
+
+                    # Flush if adding this element would exceed chunk_size
+                    if buf_len + len(text) > self.config.chunk_size and buf:
                         all_chunks.append(
                             Document(
-                                page_content="\n".join(buf),
+                                page_content="\n".join(buf).strip(),
                                 metadata={"source": str(path)},
                             )
                         )
-                        buf, buf_len = [], 0
+                        buf, seen, buf_len = [f"## {fname}\n"], set(), 0
 
-                    buf.append(t)
-                    buf_len += len(t)
+                    buf.append(text)
+                    buf_len += len(text)
 
-                # flush remainder
-                if buf:
+                # — flush remainder —
+                if buf_len:
                     all_chunks.append(
                         Document(
-                            page_content="\n".join(buf),
+                            page_content="\n".join(buf).strip(),
                             metadata={"source": str(path)},
                         )
                     )
@@ -80,7 +87,7 @@ class TextLoader:
             except Exception as e:
                 logger.warning("Failed to load %s: %s", path, e)
 
-        # 2) optional secondary splitter for *very* long docs
+        # 2) secondary split for *very* large groups
         final_docs: List[Document] = []
         for doc in all_chunks:
             if len(doc.page_content) > self.config.chunk_size * 2:
@@ -88,9 +95,6 @@ class TextLoader:
             else:
                 final_docs.append(doc)
 
-        logger.info(
-            "Produced %d chunks (avg %.0f chars)",
-            len(final_docs),
-            sum(len(d.page_content) for d in final_docs) / max(1, len(final_docs)),
-        )
+        avg = sum(len(d.page_content) for d in final_docs) / max(1, len(final_docs))
+        logger.info("Produced %d chunks (avg %.0f chars)", len(final_docs), avg)
         return final_docs
