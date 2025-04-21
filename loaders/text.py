@@ -39,38 +39,58 @@ class TextLoader:
         )
 
     def load(self, paths: List[Path]) -> List[Document]:
-        """
-        Loads and splits a list of text files into structured and chunked LangChain documents.
-
-        Args:
-            paths (List[Path]): List of file paths to load.
-
-        Returns:
-            List[Document]: Chunked LangChain Document objects with metadata.
-        """
         all_chunks: List[Document] = []
 
         for path in paths:
             try:
-                logger.info("Loading and partitioning: %s", path)
+                logger.info("Partitioning %s", path)
                 elements = partition(filename=str(path), strategy="fast")
 
-                docs = [
-                    Document(
-                        page_content=element.text,
-                        metadata={
-                            "source": str(path),
-                            **(element.metadata.to_dict() if element.metadata else {}),
-                        },
-                    )
-                    for element in elements
-                    if hasattr(element, "text") and element.text
-                ]
+                # 1) concatenate elements until we hit ~chunk_size chars
+                buf: List[str] = []
+                buf_len = 0
+                for el in elements:
+                    if not getattr(el, "text", ""):
+                        continue
+                    t = el.text.strip()
+                    if not t:
+                        continue
 
-                chunks = self.splitter.split_documents(docs)
-                all_chunks.extend(chunks)
+                    if buf_len + len(t) > self.config.chunk_size and buf:
+                        all_chunks.append(
+                            Document(
+                                page_content="\n".join(buf),
+                                metadata={"source": str(path)},
+                            )
+                        )
+                        buf, buf_len = [], 0
+
+                    buf.append(t)
+                    buf_len += len(t)
+
+                # flush remainder
+                if buf:
+                    all_chunks.append(
+                        Document(
+                            page_content="\n".join(buf),
+                            metadata={"source": str(path)},
+                        )
+                    )
 
             except Exception as e:
                 logger.warning("Failed to load %s: %s", path, e)
 
-        return all_chunks
+        # 2) optional secondary splitter for *very* long docs
+        final_docs: List[Document] = []
+        for doc in all_chunks:
+            if len(doc.page_content) > self.config.chunk_size * 2:
+                final_docs.extend(self.splitter.split_documents([doc]))
+            else:
+                final_docs.append(doc)
+
+        logger.info(
+            "Produced %d chunks (avg %.0f chars)",
+            len(final_docs),
+            sum(len(d.page_content) for d in final_docs) / max(1, len(final_docs)),
+        )
+        return final_docs
