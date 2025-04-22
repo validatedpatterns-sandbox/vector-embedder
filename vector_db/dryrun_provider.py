@@ -7,30 +7,48 @@ from vector_db.db_provider import DBProvider
 
 class DryRunProvider(DBProvider):
     """
-    A mock DBProvider used in dry run mode.
+    A mock vector DB provider for debugging document loading and chunking.
 
-    Instead of storing documents in a vector database, this provider prints the
-    chunked documents to stdout. It is useful for debugging document loading,
-    chunking, and metadata before committing to a real embedding operation.
+    `DryRunProvider` does not persist any documents or perform embedding operations.
+    Instead, it prints a preview of the documents and their metadata to stdout,
+    allowing users to validate chunking, structure, and metadata before pushing
+    to a production vector store.
+
+    Useful for development, testing, or understanding how your documents are
+    being processed.
+
+    Attributes:
+        embeddings (Embeddings): HuggingFace embedding model for compatibility.
 
     Args:
-        embedding_model (str): Embedding model to use
+        embedding_model (str): The model name to initialize HuggingFaceEmbeddings.
+                               Used only for compatibility — no embeddings are generated.
 
     Example:
-        >>> from vector_db.dry_run_provider import DryRunProvider
-        >>> provider = DryRunProvider("sentence-transformers/all-mpnet-base-v2")
-        >>> provider.add_documents(docs)  # docs is a List[Document]
+        >>> from langchain_core.documents import Document
+        >>> provider = DryRunProvider("BAAI/bge-small-en")
+        >>> docs = [Document(page_content="Hello world", metadata={"source": "test.txt"})]
+        >>> provider.add_documents(docs)
     """
 
     def __init__(self, embedding_model: str):
+        """
+        Initialize the dry run provider with a placeholder embedding model.
+
+        Args:
+            embedding_model (str): The name of the embedding model (used for interface consistency).
+        """
         super().__init__(embedding_model)
 
     def add_documents(self, docs: List[Document]) -> None:
         """
-        Print chunked documents and metadata to stdout for debugging.
+        Print chunked documents and metadata to stdout for inspection.
+
+        This method displays the first 10 document chunks, including the start
+        of their page content and associated metadata.
 
         Args:
-            docs (List[Document]): The documents to preview in dry run mode.
+            docs (List[Document]): A list of LangChain documents to preview.
         """
         print("\n=== Dry Run Output ===")
         for i, doc in enumerate(docs[:10]):

@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import Dict, List
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.document_loaders import WebBaseLoader
@@ -12,21 +12,31 @@ logger = logging.getLogger(__name__)
 
 class WebLoader:
     """
-    Loads and semantically splits documents from a list of web URLs
-    using LangChain's WebBaseLoader and a configurable chunking strategy.
+    Loads and chunks content from a list of web URLs using LangChain's `WebBaseLoader`.
 
-    This loader does not embed documents directly — it returns them to be
-    embedded by the caller.
+    This loader:
+    - Fetches HTML or text content from each URL
+    - Applies recursive text chunking based on the configured chunk size and overlap
+    - Annotates each chunk with metadata including `source` (URL) and `chunk_id`
+      for downstream neighbor expansion in retrieval tasks
 
     Attributes:
-        config (Config): The application config containing chunk size and overlap.
+        config (Config): Configuration object containing chunk size and overlap.
 
     Example:
         >>> loader = WebLoader(config)
-        >>> chunks = loader.load(["https://example.com/page1", "https://example.com/page2"])
+        >>> chunks = loader.load(["https://example.com/intro", "https://example.com/docs"])
+        >>> print(chunks[0].metadata)
+        {'source': 'https://example.com/intro', 'chunk_id': 0}
     """
 
     def __init__(self, config: Config):
+        """
+        Initialize the WebLoader with a given configuration.
+
+        Args:
+            config (Config): Configuration object with chunking parameters.
+        """
         self.config = config
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.chunk_size,
@@ -35,34 +45,44 @@ class WebLoader:
 
     def load(self, urls: List[str]) -> List[Document]:
         """
-        Load and chunk documents from the given list of URLs.
+        Loads and splits documents from the given list of URLs.
+
+        Steps:
+            - Downloads the web pages
+            - Splits content into semantic or character-based chunks
+            - Adds `source` and `chunk_id` to each chunk for traceability
 
         Args:
-            urls (List[str]): Web URLs to load.
+            urls (List[str]): List of web URLs to fetch and process.
 
         Returns:
-            List[Document]: A list of chunked LangChain documents.
+            List[Document]: A list of chunked `Document` objects with metadata.
         """
         if not urls:
-            logger.warning("No URLs provided to WebLoader.")
+            logger.warning("WebLoader called with empty URL list.")
             return []
 
-        logger.info("Loading web documents from %d URL(s)...", len(urls))
-        for url in urls:
-            logger.debug(" - %s", url)
-
+        logger.info("Loading %d web document(s)…", len(urls))
         try:
-            loader = WebBaseLoader(urls)
-            docs = loader.load()
+            docs = WebBaseLoader(urls).load()
         except Exception:
-            logger.exception("Failed to load URLs via WebBaseLoader")
+            logger.exception("Failed to fetch one or more URLs")
             raise
 
+        chunks = self.splitter.split_documents(docs)
+
+        # Assign unique chunk_id per source URL
+        per_source_counter: Dict[str, int] = {}
+        for ch in chunks:
+            src = ch.metadata.get("source") or ch.metadata.get("url") or "unknown"
+            ch.metadata["source"] = src
+            ch.metadata["chunk_id"] = per_source_counter.setdefault(src, 0)
+            per_source_counter[src] += 1
+
         logger.info(
-            "Splitting %d document(s) with chunk size %s and overlap %s",
-            len(docs),
-            self.config.chunk_size,
-            self.config.chunk_overlap,
+            "Produced %d web chunks (avg %.0f chars)",
+            len(chunks),
+            sum(len(c.page_content) for c in chunks) / max(1, len(chunks)),
         )
 
-        return self.splitter.split_documents(docs)
+        return chunks

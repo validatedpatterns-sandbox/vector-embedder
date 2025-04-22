@@ -15,26 +15,38 @@ logger = logging.getLogger(__name__)
 
 class GitLoader:
     """
-    Loads and processes documents from Git repositories based on configured glob patterns.
+    Loads and chunks documents from Git repositories based on configured glob patterns.
 
-    For each configured repository, this loader:
-    - Clones or pulls the latest repo into a temporary folder
-    - Applies the configured glob patterns to find matching files
-    - Loads PDF files using PDFLoader
-    - Loads supported text files using TextLoader
-    - Returns all chunked LangChain Document objects (does NOT push to DB)
+    For each Git repository specified in `config.repo_sources`, this loader:
+    - Clones or pulls the latest state into a local temp directory
+    - Applies specified glob patterns to locate files of interest
+    - Loads PDF files using `PDFLoader`
+    - Loads general-purpose text files using `TextLoader`
+    - Adds chunk metadata including `chunk_id` and `chunk_total`
+    - Returns a list of LangChain `Document` objects (does not push to vector DB)
 
     Attributes:
-        config (Config): Application config including temp paths, glob patterns, and chunking rules.
+        config (Config): The application configuration, including:
+            - temp_dir: base temp folder for local repo checkouts
+            - repo_sources: list of dicts with {repo, globs}
+            - chunk_size / chunk_overlap: passed through to loaders
 
     Example:
-        >>> config = Config.load()
-        >>> loader = GitLoader(config)
-        >>> chunks = loader.load()
-        >>> config.db_provider.add_documents(chunks)
+        >>> from config import Config
+        >>> loader = GitLoader(Config.load())
+        >>> docs = loader.load()
+        >>> print(docs[0].metadata)
+        {'source': 'docs/content/learn/getting-started.adoc', 'chunk_id': 0, 'chunk_total': 3}
     """
 
     def __init__(self, config: Config):
+        """
+        Initialize the GitLoader with a configuration.
+
+        Args:
+            config (Config): Configuration object with glob patterns, temp directory,
+                             and chunking parameters used by sub-loaders.
+        """
         self.config = config
         self.base_path = Path(config.temp_dir) / "repo_sources"
         self.pdf_loader = PDFLoader(config)
@@ -42,15 +54,16 @@ class GitLoader:
 
     def load(self) -> List[Document]:
         """
-        Loads and chunks documents from all configured Git repos.
+        Load and chunk documents from all configured Git repositories.
 
-        This includes:
-        - Cloning or updating each Git repo
-        - Matching glob patterns to find relevant files
-        - Loading and chunking documents using appropriate loaders
+        Process:
+            1. Clone or update each repo into a local temp folder
+            2. Match files based on repo-specific glob patterns
+            3. Route files to PDF or text loader based on extension
+            4. Chunk and annotate documents with source + chunk metadata
 
         Returns:
-            List[Document]: Chunked LangChain documents from all matched files.
+            List[Document]: A list of chunked LangChain documents ready for embedding or indexing.
         """
         all_chunks: List[Document] = []
 
@@ -81,6 +94,16 @@ class GitLoader:
         return all_chunks
 
     def _ensure_repo_up_to_date(self, url: str, dest: Path) -> None:
+        """
+        Ensure a local copy of the Git repo is present and up to date.
+
+        If the repo exists, attempts a `git pull`. If it fails or the repo
+        is missing, performs a fresh `git clone`.
+
+        Args:
+            url (str): Git repository URL.
+            dest (Path): Local path where the repo should reside.
+        """
         if dest.exists():
             logger.info("Repo already cloned at %s, attempting pull...", dest)
             try:
@@ -98,6 +121,16 @@ class GitLoader:
         self._clone_repo(url, dest)
 
     def _clone_repo(self, url: str, dest: Path) -> None:
+        """
+        Clone the given Git repository to the destination directory.
+
+        Args:
+            url (str): Git repository URL.
+            dest (Path): Target path for clone.
+
+        Raises:
+            RuntimeError: If the clone operation fails.
+        """
         logger.info("Cloning repository %s to %s", url, dest)
         try:
             subprocess.run(
@@ -111,6 +144,16 @@ class GitLoader:
             raise RuntimeError(f"Failed to clone repo: {url}") from e
 
     def _collect_files(self, base: Path, patterns: List[str]) -> List[Path]:
+        """
+        Apply glob patterns to collect file paths in a repo directory.
+
+        Args:
+            base (Path): Root path of the repo checkout.
+            patterns (List[str]): List of glob patterns (e.g. "docs/**/*.md").
+
+        Returns:
+            List[Path]: All matched paths under the repo root.
+        """
         matched: List[Path] = []
 
         for pattern in patterns:
