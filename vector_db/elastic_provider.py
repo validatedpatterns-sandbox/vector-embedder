@@ -11,29 +11,53 @@ logger = logging.getLogger(__name__)
 
 class ElasticProvider(DBProvider):
     """
-    Elasticsearch-based vector DB provider using LangChain's ElasticsearchStore.
+    Vector database provider backed by Elasticsearch using LangChain's ElasticsearchStore.
+
+    This provider allows storing and querying vectorized documents in an Elasticsearch
+    cluster. Documents are embedded using a HuggingFace model and stored with associated
+    metadata in the specified index.
+
+    Attributes:
+        db (ElasticsearchStore): LangChain-compatible wrapper around Elasticsearch vector storage.
+        embeddings (Embeddings): HuggingFace embedding model for generating document vectors.
 
     Args:
-        embedding_model (str): Embedding model to use
-        url (str): Full URL to the Elasticsearch cluster (e.g. http://localhost:9200)
-        password (str): Authentication password for the cluster
-        index (str): Index name to use for vector storage
-        user (str): Username for Elasticsearch (default: "elastic")
+        embedding_model (str): HuggingFace model name for computing embeddings.
+        url (str): Full URL to the Elasticsearch cluster (e.g. "http://localhost:9200").
+        password (str): Password for the Elasticsearch user.
+        index (str): The index name where documents will be stored.
+        user (str): Elasticsearch username (default is typically "elastic").
 
     Example:
+        >>> from vector_db.elastic_provider import ElasticProvider
         >>> provider = ElasticProvider(
-        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
+        ...     embedding_model="BAAI/bge-small-en",
         ...     url="http://localhost:9200",
         ...     password="changeme",
-        ...     index="docs",
+        ...     index="rag-docs",
         ...     user="elastic"
         ... )
-        >>> provider.add_documents(chunks)
+        >>> provider.add_documents(docs)
     """
 
     def __init__(
-        self, embedding_model: str, url: str, password: str, index: str, user: str
+        self,
+        embedding_model: str,
+        url: str,
+        password: str,
+        index: str,
+        user: str,
     ):
+        """
+        Initialize an Elasticsearch-based vector DB provider.
+
+        Args:
+            embedding_model (str): The model name for computing embeddings.
+            url (str): Full URL of the Elasticsearch service.
+            password (str): Elasticsearch user's password.
+            index (str): Name of the Elasticsearch index to use.
+            user (str): Elasticsearch username (e.g., "elastic").
+        """
         super().__init__(embedding_model)
 
         self.db = ElasticsearchStore(
@@ -48,9 +72,12 @@ class ElasticProvider(DBProvider):
 
     def add_documents(self, docs: List[Document]) -> None:
         """
-        Add documents to the Elasticsearch index.
+        Add a batch of LangChain documents to the Elasticsearch index.
+
+        Each document will be embedded using the configured model and stored
+        in the specified index with any associated metadata.
 
         Args:
-            docs (List[Document]): Chunked LangChain documents to index.
+            docs (List[Document]): List of documents to index.
         """
         self.db.add_documents(docs)

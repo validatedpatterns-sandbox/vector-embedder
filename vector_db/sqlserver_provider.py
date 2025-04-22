@@ -12,30 +12,37 @@ logger = logging.getLogger(__name__)
 
 class SQLServerProvider(DBProvider):
     """
-    SQL Server-based vector DB provider using LangChain's SQLServer_VectorStore.
+    SQL Server-based vector DB provider using LangChain's SQLServer_VectorStore integration.
+
+    This provider connects to a Microsoft SQL Server instance and stores document embeddings
+    in a specified table. If the target database does not exist, it will be created automatically.
+
+    Attributes:
+        db (SQLServer_VectorStore): Underlying LangChain-compatible vector store.
+        connection_string (str): Full ODBC connection string to the SQL Server instance.
 
     Args:
-        embedding_model (str): Embedding model to use
-        host (str): Hostname of the SQL Server
-        port (str): Port number
-        user (str): SQL login username
-        password (str): SQL login password
-        database (str): Database name to connect to or create
-        table (str): Name of the table used to store vector embeddings
-        driver (str): ODBC driver name (e.g., 'ODBC Driver 18 for SQL Server')
+        embedding_model (str): HuggingFace-compatible embedding model to use.
+        host (str): SQL Server hostname or IP address.
+        port (str): Port number (typically 1433).
+        user (str): SQL Server login username.
+        password (str): SQL Server login password.
+        database (str): Target database name. Will be created if not present.
+        table (str): Table name to store vector embeddings.
+        driver (str): ODBC driver name (e.g., 'ODBC Driver 18 for SQL Server').
 
     Example:
         >>> provider = SQLServerProvider(
-        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
+        ...     embedding_model="BAAI/bge-large-en-v1.5",
         ...     host="localhost",
         ...     port="1433",
         ...     user="sa",
         ...     password="StrongPassword!",
-        ...     database="docs",
-        ...     table="vector_table",
+        ...     database="my_vectors",
+        ...     table="embedded_docs",
         ...     driver="ODBC Driver 18 for SQL Server"
         ... )
-        >>> provider.add_documents(chunks)
+        >>> provider.add_documents(docs)
     """
 
     def __init__(
@@ -60,7 +67,6 @@ class SQLServerProvider(DBProvider):
         self.driver = driver
 
         self.connection_string = self._build_connection_string(self.database)
-
         self._ensure_database_exists()
 
         logger.info(
@@ -74,10 +80,19 @@ class SQLServerProvider(DBProvider):
             connection_string=self.connection_string,
             embedding_function=self.embeddings,
             table_name=self.table,
-            embedding_length=768,  # Should match the sentence-transformer model
+            embedding_length=768,  # Ensure this matches the model you're using
         )
 
     def _build_connection_string(self, db_name: str) -> str:
+        """
+        Construct a SQL Server ODBC connection string.
+
+        Args:
+            db_name (str): Name of the database to connect to.
+
+        Returns:
+            str: ODBC-compliant connection string.
+        """
         return (
             f"Driver={{{self.driver}}};"
             f"Server={self.host},{self.port};"
@@ -89,6 +104,12 @@ class SQLServerProvider(DBProvider):
         )
 
     def _ensure_database_exists(self) -> None:
+        """
+        Connect to the SQL Server master database and create the target database if missing.
+
+        Raises:
+            RuntimeError: If the database cannot be created or accessed.
+        """
         master_conn_str = self._build_connection_string("master")
         try:
             with pyodbc.connect(master_conn_str, autocommit=True) as conn:
@@ -105,13 +126,13 @@ class SQLServerProvider(DBProvider):
 
     def add_documents(self, docs: List[Document]) -> None:
         """
-        Add documents to the SQL Server table in batches.
+        Add documents to the SQL Server table in small batches.
 
         Args:
-            docs (List[Document]): List of LangChain documents to embed and insert.
+            docs (List[Document]): LangChain document chunks to embed and store.
 
         Raises:
-            Exception: If any batch insert fails.
+            Exception: If a batch insert operation fails.
         """
         batch_size = 50
         for i in range(0, len(docs), batch_size):

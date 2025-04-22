@@ -13,25 +13,37 @@ logger = logging.getLogger(__name__)
 
 class TextLoader:
     """
-    Loads and semantically splits a list of general-purpose text documents
-    (e.g., .txt, .md, .rst, .adoc) using Unstructured's local partitioning engine.
+    Loads and semantically splits general-purpose text documents for RAG use.
 
-    This loader does not require an API key and works fully offline.
+    This loader uses Unstructured's local partitioning engine to break documents
+    into semantically meaningful elements (e.g., titles, narrative text, lists),
+    and then groups those elements into chunked LangChain Document objects,
+    each annotated with `chunk_id` and `chunk_total` metadata for use in
+    neighborhood-aware retrieval.
 
-    Unstructured's `partition()` function breaks files into structured elements
-    like titles, narrative text, lists, etc., which improves RAG chunk quality
-    over naive fixed-size splitting.
+    This loader works fully offline and does not require an API key.
 
     Attributes:
-        config (Config): The job configuration, including chunk size and overlap.
+        config (Config): Configuration object specifying chunking parameters.
 
     Example:
-        >>> loader = TextLoader(config)
-        >>> docs = loader.load([Path("README.md"), Path("guide.rst")])
-        >>> print(docs[0].page_content)
+        >>> from pathlib import Path
+        >>> from config import Config
+        >>> loader = TextLoader(Config(chunk_size=1024, chunk_overlap=100))
+        >>> docs = loader.load([Path("README.md"), Path("guide.adoc")])
+        >>> print(docs[0].metadata)
+        {'source': 'README.md', 'chunk_id': 0, 'chunk_total': 3}
     """
 
     def __init__(self, config: Config):
+        """
+        Initializes the TextLoader with chunking parameters.
+
+        Args:
+            config (Config): Application-level configuration object, must include:
+                - config.chunk_size (int): Max number of characters per chunk.
+                - config.chunk_overlap (int): Optional overlap between chunks.
+        """
         self.config = config
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.chunk_size,
@@ -39,7 +51,31 @@ class TextLoader:
         )
 
     def load(self, paths: List[Path]) -> List[Document]:
-        """Partition → group → (optional) secondary split → add chunk indices."""
+        """
+        Loads and splits a list of text files into semantic chunks.
+
+        This function uses Unstructured's `partition()` function to extract
+        structured document elements, then assembles these into grouped chunks
+        (respecting max chunk size) while tagging each chunk with:
+
+            - 'source': the original file path
+            - 'chunk_id': the position of this chunk in the document
+            - 'chunk_total': total number of chunks for that file
+
+        Args:
+            paths (List[Path]): List of file paths to text-based documents
+                                (.txt, .md, .adoc, .rst, etc.).
+
+        Returns:
+            List[Document]: A list of LangChain `Document` objects, each
+                            containing chunked text and structured metadata.
+
+        Notes:
+            - If a grouped chunk exceeds 2x chunk_size, it is re-split using
+              a recursive character splitter.
+            - Each chunk begins with a lightweight heading that includes the
+              filename to help orient the LLM when formatting prompts.
+        """
         grouped: list[Document] = []
 
         for path in paths:
@@ -71,7 +107,7 @@ class TextLoader:
                     if not txt:
                         continue
                     if buf_len == 0:
-                        buf.append(f"## {fname}\n")  # one heading per chunk
+                        buf.append(f"## {fname}\n")  # inject heading
                     if buf_len + len(txt) > self.config.chunk_size:
                         _flush()
                     buf.append(txt)
@@ -81,7 +117,7 @@ class TextLoader:
             except Exception as e:
                 logger.warning("Failed to load %s: %s", path, e)
 
-        # — optional secondary split for ultra‑long groups —
+        # Handle oversized chunks via recursive splitting
         final_docs = []
         for doc in grouped:
             if len(doc.page_content) > self.config.chunk_size * 2:
@@ -89,7 +125,7 @@ class TextLoader:
             else:
                 final_docs.append(doc)
 
-        # annotate chunk_total (needed only once per file)
+        # Add chunk_total metadata for all docs
         counts: dict[str, int] = {}
         for d in final_docs:
             counts[d.metadata["source"]] = counts.get(d.metadata["source"], 0) + 1

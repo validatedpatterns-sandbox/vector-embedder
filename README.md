@@ -1,131 +1,78 @@
-# vector-embedder
+# 📚 vector-embedder
 
 [![Docker Repository on Quay](https://quay.io/repository/dminnear/vector-embedder/status "Docker Repository on Quay")](https://quay.io/repository/dminnear/vector-embedder)
 
-**vector-embedder** is a flexible, language-agnostic document ingestion pipeline that generates and stores vector embeddings from structured and unstructured content.
+**vector-embedder** is a flexible, language-agnostic document ingestion and embedding pipeline. It transforms structured and unstructured content from multiple sources into vector embeddings and stores them in your vector database of choice.
 
-It supports embedding content from Git repositories (via glob patterns), web URLs, and various file types into multiple vector database backends. It runs locally, in containers, or as a Kubernetes/OpenShift job.
+It supports Git repositories, web URLs, and file types like Markdown, PDFs, and HTML. Designed for local runs, containers, or OpenShift/Kubernetes jobs.
 
 ---
 
-## 📦 Features
+## ⚙️ Features
 
-- ✅ **Multiple vector DB backends supported**:
+- ✅ **Multi-DB support**:
   - Redis (RediSearch)
   - Elasticsearch
   - PGVector (PostgreSQL)
   - SQL Server (preview)
   - Qdrant
-  - Dry Run (prints to console, no DB required)
+  - Dry Run (no DB required; logs to console)
 - ✅ **Flexible input sources**:
   - Git repositories via glob patterns (`**/*.pdf`, `*.md`, etc.)
   - Web pages via configurable URL lists
-- ✅ **Smart document chunking** with configurable `CHUNK_SIZE` and `CHUNK_OVERLAP`
-- ✅ Embedding powered by [`sentence-transformers`](https://www.sbert.net/)
-- ✅ Parsing powered by LangChain and [Unstructured](https://unstructured.io/)
-- ✅ Fully configurable via `.env` or runtime env vars
-- ✅ Containerized using UBI and OpenShift-compatible images
+- ✅ **Smart chunking** with configurable `CHUNK_SIZE` and `CHUNK_OVERLAP`
+- ✅ Embeddings via [`sentence-transformers`](https://www.sbert.net/)
+- ✅ Parsing via [LangChain](https://github.com/langchain-ai/langchain) + [Unstructured](https://unstructured.io/)
+- ✅ UBI-compatible container, OpenShift-ready
+- ✅ Fully configurable via `.env` or `-e` environment flags
 
 ---
 
-## 🚀 Usage
+## 🚀 Quick Start
 
-### Configuration
+### 1. Configuration
 
-All settings are read from a `.env` file at the project root. You can override values using `export` or `-e` flags in containers.
-
-Example `.env`:
+Set your configuration in a `.env` file at the project root.
 
 ```dotenv
-# === File System Config ===
+# Temporary working directory
 TEMP_DIR=/tmp
 
-# === Logging ===
+# Logging
 LOG_LEVEL=info
 
-# === Git Repo Document Sources ===
-REPO_SOURCES=[{"repo": "https://github.com/RHEcosystemAppEng/llm-on-openshift.git", "globs": ["examples/notebooks/langchain/rhods-doc/*.pdf"]}]
+# Sources
+REPO_SOURCES=[{"repo": "https://github.com/example/repo.git", "globs": ["docs/**/*.md"]}]
+WEB_SOURCES=["https://example.com/docs/", "https://example.com/report.pdf"]
 
-# === Web Document Sources ===
-WEB_SOURCES=["https://ai-on-openshift.io/getting-started/openshift/", "https://ai-on-openshift.io/getting-started/opendatahub/"]
+# Chunking
+CHUNK_SIZE=2048
+CHUNK_OVERLAP=200
 
-# === Embedding Config ===
-CHUNK_SIZE=1024
-CHUNK_OVERLAP=40
-DB_TYPE=DRY_RUN
+# Embeddings
+EMBEDDING_MODEL=sentence-transformers/all-mpnet-base-v2
 
-# === Redis ===
-REDIS_URL=redis://localhost:6379
-REDIS_INDEX=docs
-REDIS_SCHEMA=redis_schema.yaml
-
-# === Elasticsearch ===
-ELASTIC_URL=http://localhost:9200
-ELASTIC_INDEX=docs
-ELASTIC_USER=elastic
-ELASTIC_PASSWORD=changeme
-
-# === PGVector ===
-PGVECTOR_URL=postgresql://user:pass@localhost:5432/mydb
-PGVECTOR_COLLECTION_NAME=documents
-
-# === SQL Server ===
-SQLSERVER_HOST=localhost
-SQLSERVER_PORT=1433
-SQLSERVER_USER=sa
-SQLSERVER_PASSWORD=StrongPassword!
-SQLSERVER_DB=docs
-SQLSERVER_TABLE=vector_table
-SQLSERVER_DRIVER=ODBC Driver 18 for SQL Server
-
-# === Qdrant ===
-QDRANT_URL=http://localhost:6333
-QDRANT_COLLECTION=embedded_docs
+# Vector DB
+DB_TYPE=DRYRUN
 ```
 
-> 💡 Default `DB_TYPE=DRY_RUN` skips DB upload and prints chunked docs to stdout — great for testing!
+🧪 `DB_TYPE=DRYRUN` logs chunks to stdout and skips database indexing—great for development!
 
----
-
-### 🔍 Dry Run Mode
-
-Dry run mode helps you test loaders and document chunking without needing any database.
-
-```dotenv
-DB_TYPE=DRY_RUN
-```
-
-Dry run will:
-
-- Load from web and Git sources
-- Chunk content
-- Print chunk metadata and contents to stdout
-
-Run with:
+### 2. Run Locally
 
 ```bash
 ./embed_documents.py
 ```
 
-or inside a container:
-
-```bash
-podman run --rm --env-file .env embed-job
-```
-
----
-
-### 🛠️ Build the Container
+### 3. Or Run in a Container
 
 ```bash
 podman build -t embed-job .
+
+podman run --rm --env-file .env embed-job
 ```
 
----
-
-### 🧪 Run in a Container
-
-With inline env vars:
+You can also pass inline vars:
 
 ```bash
 podman run --rm \
@@ -134,38 +81,44 @@ podman run --rm \
   embed-job
 ```
 
-Or using `.env`:
+---
 
-```bash
-podman run --rm \
-  --env-file .env \
-  embed-job
+## 🧪 Dry Run Mode
+
+Dry run skips vector DB upload and prints chunk metadata and content to the terminal.
+
+```dotenv
+DB_TYPE=DRYRUN
 ```
 
-In OpenShift or Kubernetes, mount the `.env` via `ConfigMap` or use `env` blocks.
+Run it:
+
+```bash
+./embed_documents.py
+```
 
 ---
 
-## 📂 Project Structure
+## 🗂️ Project Layout
 
 ```
 .
-├── embed_documents.py      # Main entrypoint
-├── config.py               # Loads config from .env
-├── loaders/                # Git, web, PDF, and text file loaders
-├── vector_db/              # DB provider implementations
+├── embed_documents.py      # Main entrypoint script
+├── config.py               # Config loader from env
+├── loaders/                # Git, web, PDF, and text loaders
+├── vector_db/              # Pluggable DB providers
 ├── requirements.txt        # Python dependencies
-├── redis_schema.yaml       # Schema definition for Redis vector DB
-└── .env                    # Default config (example provided)
+├── redis_schema.yaml       # Redis index schema (if used)
+└── .env                    # Default runtime config
 ```
 
 ---
 
-## 🧪 Local Testing Backends
+## 🧪 Local DB Testing
 
-Use Podman to spin up local test databases for fast experimentation.
+Run a compatible DB locally to test full ingestion + indexing.
 
-### 🐘 PGVector (PostgreSQL)
+### PGVector (PostgreSQL)
 
 ```bash
 podman run --rm -d \
@@ -183,7 +136,7 @@ DB_TYPE=PGVECTOR ./embed_documents.py
 
 ---
 
-### 🔍 Elasticsearch
+### Elasticsearch
 
 ```bash
 podman run --rm -d \
@@ -202,7 +155,7 @@ DB_TYPE=ELASTIC ./embed_documents.py
 
 ---
 
-### 🧠 Redis (RediSearch)
+### Redis (RediSearch)
 
 ```bash
 podman run --rm -d \
@@ -217,7 +170,7 @@ DB_TYPE=REDIS ./embed_documents.py
 
 ---
 
-### 🔮 Qdrant
+### Qdrant
 
 ```bash
 podman run -d \
@@ -232,9 +185,11 @@ DB_TYPE=QDRANT ./embed_documents.py
 
 ---
 
-## 🙏 Acknowledgments
+## 🙌 Acknowledgments
+
+Built with:
 
 - [LangChain](https://github.com/langchain-ai/langchain)
 - [Unstructured](https://github.com/Unstructured-IO/unstructured)
 - [Sentence Transformers](https://www.sbert.net/)
-- [OpenShift UBI Base Images](https://catalog.redhat.com/software/containers/search)
+- [OpenShift UBI Base](https://catalog.redhat.com/software/containers/search)

@@ -18,13 +18,24 @@ from vector_db.sqlserver_provider import SQLServerProvider
 @dataclass
 class Config:
     """
-    Application configuration loaded from environment variables.
+    Global configuration object for embedding and vector DB ingestion jobs.
 
-    This centralizes all configuration values needed for the embedding job,
-    including database provider setup, chunking behavior, document sources,
-    and logging configuration.
+    This class loads configuration from environment variables and initializes
+    all the required components (e.g., DB providers, chunking strategy, input sources).
 
-    Use `Config.load()` to load and validate values from the current environment.
+    Attributes:
+        db_provider (DBProvider): Initialized provider for a vector database.
+        chunk_size (int): Character length for each document chunk.
+        chunk_overlap (int): Number of overlapping characters between adjacent chunks.
+        web_sources (List[str]): List of web URLs to scrape and embed.
+        repo_sources (List[Dict]): Repositories and glob patterns for file discovery.
+        temp_dir (str): Path to a temporary working directory.
+        log_level (int): Log verbosity level.
+
+    Example:
+        >>> config = Config.load()
+        >>> print(config.chunk_size)
+        >>> config.db_provider.add_documents(docs)
     """
 
     db_provider: DBProvider
@@ -37,6 +48,18 @@ class Config:
 
     @staticmethod
     def _get_required_env_var(key: str) -> str:
+        """
+        Retrieve a required environment variable or raise an error.
+
+        Args:
+            key (str): The environment variable name.
+
+        Returns:
+            str: The value of the environment variable.
+
+        Raises:
+            ValueError: If the variable is not defined.
+        """
         value = os.getenv(key)
         if not value:
             raise ValueError(f"{key} environment variable is required.")
@@ -44,6 +67,18 @@ class Config:
 
     @staticmethod
     def _parse_log_level(log_level_name: str) -> int:
+        """
+        Convert a string log level into a `logging` module constant.
+
+        Args:
+            log_level_name (str): One of DEBUG, INFO, WARNING, ERROR, CRITICAL.
+
+        Returns:
+            int: Corresponding `logging` level.
+
+        Raises:
+            ValueError: If an invalid level is provided.
+        """
         log_levels = {
             "DEBUG": logging.DEBUG,
             "INFO": logging.INFO,
@@ -60,7 +95,16 @@ class Config:
     @staticmethod
     def _init_db_provider(db_type: str) -> DBProvider:
         """
-        Initialize the correct DBProvider subclass based on DB_TYPE.
+        Factory method to initialize the correct DB provider from environment variables.
+
+        Args:
+            db_type (str): Type of DB specified via `DB_TYPE` (e.g., REDIS, PGVECTOR, QDRANT, etc.)
+
+        Returns:
+            DBProvider: Initialized instance of a provider subclass.
+
+        Raises:
+            ValueError: If the DB type is unsupported or required vars are missing.
         """
         get = Config._get_required_env_var
         db_type = db_type.upper()
@@ -109,48 +153,47 @@ class Config:
     @staticmethod
     def load() -> "Config":
         """
-        Load configuration from environment variables.
+        Load application settings from `.env` variables into a typed config object.
 
-        All values are expected to be present in the environment and are validated.
-        This method is the single point of truth for all configurable values used
-        throughout the embedding pipeline.
+        This includes logging level setup, DB provider initialization, and input
+        source validation.
 
         Returns:
-            Config: A fully populated Config object with validated values.
+            Config: A fully-initialized configuration object.
 
         Raises:
-            ValueError: If any required variable is missing or invalid.
+            ValueError: If required environment variables are missing or malformed.
         """
         load_dotenv()
         get = Config._get_required_env_var
 
-        # Initialize logger
+        # Logging setup
         log_level = get("LOG_LEVEL").upper()
         logging.basicConfig(level=Config._parse_log_level(log_level))
         logger = logging.getLogger(__name__)
         logger.debug("Logging initialized at level: %s", log_level)
 
-        # Initialize db
+        # Database backend
         db_type = get("DB_TYPE")
         db_provider = Config._init_db_provider(db_type)
 
-        # Web URLs
+        # Web source URLs
         try:
             web_sources = json.loads(get("WEB_SOURCES"))
         except json.JSONDecodeError as e:
             raise ValueError(f"WEB_SOURCES must be a valid JSON list: {e}")
 
-        # Repo sources
+        # Git repositories and file matchers
         try:
             repo_sources = json.loads(get("REPO_SOURCES"))
         except json.JSONDecodeError as e:
             raise ValueError(f"Invalid REPO_SOURCES JSON: {e}") from e
 
-        # Embedding settings
+        # Embedding chunking strategy
         chunk_size = int(get("CHUNK_SIZE"))
         chunk_overlap = int(get("CHUNK_OVERLAP"))
 
-        # Misc
+        # Temporary file location
         temp_dir = get("TEMP_DIR")
 
         return Config(

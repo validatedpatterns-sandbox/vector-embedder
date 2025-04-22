@@ -1,5 +1,35 @@
 #!/usr/bin/env python
 
+"""
+embed_documents.py
+
+Main entry point for embedding documents into a vector database.
+
+This script performs the following operations:
+1. Loads configuration and initializes DB provider and loaders.
+2. Fetches and embeds Git-sourced documents (Markdown, PDFs, etc.).
+3. Fetches and embeds web documents (HTML and PDFs).
+4. Chunks all documents and indexes them into the configured vector store.
+
+This tool is designed for use in pipelines or manual indexing workflows.
+
+Usage:
+    $ python embed_documents.py
+
+Environment:
+    Requires a valid .env file or environment variables defined for:
+    - DB_TYPE, EMBEDDING_MODEL, TEMP_DIR
+    - CHUNK_SIZE, CHUNK_OVERLAP, LOG_LEVEL
+    - WEB_SOURCES, REPO_SOURCES
+    - Plus additional DB-specific variables based on DB_TYPE
+
+Example:
+    $ DB_TYPE=QDRANT EMBEDDING_MODEL=BAAI/bge-large-en-v1.5 \
+      CHUNK_SIZE=20480 CHUNK_OVERLAP=2048 \
+      TEMP_DIR=/tmp EMBEDDING_MODEL=... \
+      python embed_documents.py
+"""
+
 import logging
 import sys
 from pathlib import Path
@@ -31,7 +61,20 @@ def _fail_and_exit(message: str, exc: Exception) -> None:
 
 
 def main() -> None:
-    # Run Git-based document embedding
+    """
+    Main embedding workflow for Git, HTML, and PDF sources.
+
+    Steps:
+        1. Load and chunk files from configured Git repos, if any.
+        2. Load and chunk HTML documents from web sources.
+        3. Download, load, and chunk remote PDF files.
+        4. Store all chunks into the configured vector DB provider.
+
+    All errors are logged with traceback and will stop execution via `_fail_and_exit`.
+    """
+    # ───────────────────────────────────────────────────────────────
+    # Git-based document ingestion
+    # ───────────────────────────────────────────────────────────────
     if config.repo_sources:
         logger.info("Starting Git-based document embedding...")
         try:
@@ -48,11 +91,13 @@ def main() -> None:
         except Exception as e:
             _fail_and_exit("Failed during Git document processing", e)
 
-    # Split web sources into HTML and PDF URLs
+    # ───────────────────────────────────────────────────────────────
+    # Web-based document ingestion
+    # ───────────────────────────────────────────────────────────────
     pdf_urls = [url for url in config.web_sources if url.lower().endswith(".pdf")]
     html_urls = [url for url in config.web_sources if not url.lower().endswith(".pdf")]
 
-    # Run HTML-based web embedding
+    # HTML documents
     if html_urls:
         logger.info("Starting HTML-based web document embedding...")
         try:
@@ -67,7 +112,7 @@ def main() -> None:
         except Exception as e:
             _fail_and_exit("Failed during HTML web document processing", e)
 
-    # Run PDF-based web embedding
+    # PDF documents
     if pdf_urls:
         logger.info("Downloading PDF documents from web URLs...")
         pdf_dir = Path(config.temp_dir) / "web_pdfs"

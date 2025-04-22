@@ -13,21 +13,30 @@ logger = logging.getLogger(__name__)
 
 class PDFLoader:
     """
-    Loads and splits a list of PDF documents using PyPDFLoader.
+    Loads and splits a list of PDF files into chunked LangChain `Document` objects.
 
-    Each PDF is processed individually, then split into smaller chunks
-    using RecursiveCharacterTextSplitter to optimize for RAG and vector DB ingestion.
+    This loader:
+    - Uses `PyPDFLoader` to convert each page of a PDF into text
+    - Applies `RecursiveCharacterTextSplitter` to split pages into smaller overlapping chunks
+    - Annotates each chunk with metadata including `source` and `chunk_id`
 
     Attributes:
-        config (Config): Global configuration for chunking and db connection.
+        config (Config): Configuration object that specifies chunk size and overlap.
 
     Example:
         >>> loader = PDFLoader(config)
-        >>> chunks = loader.load([Path("paper.pdf"), Path("spec.pdf")])
-        >>> print(chunks[0].page_content)
+        >>> docs = loader.load([Path("whitepaper.pdf"), Path("spec.pdf")])
+        >>> print(docs[0].metadata)
+        {'source': 'whitepaper.pdf', 'chunk_id': 0}
     """
 
     def __init__(self, config: Config):
+        """
+        Initialize the PDFLoader with a given configuration.
+
+        Args:
+            config (Config): Contains chunking parameters (chunk_size, chunk_overlap).
+        """
         self.config = config
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=config.chunk_size,
@@ -36,24 +45,34 @@ class PDFLoader:
 
     def load(self, paths: List[Path]) -> List[Document]:
         """
-        Loads and splits a list of PDF files.
+        Loads and chunks the content of each PDF file.
+
+        For each PDF:
+            - Extracts per-page content using `PyPDFLoader`
+            - Splits text into chunks optimized for retrieval
+            - Annotates each chunk with its source path and chunk index
 
         Args:
-            paths (List[Path]): List of PDF file paths.
+            paths (List[Path]): List of PDF file paths to process.
 
         Returns:
-            List[Document]: A list of chunked LangChain Document objects.
+            List[Document]: List of chunked documents with metadata attached.
         """
         all_chunks: List[Document] = []
 
         for path in paths:
             try:
                 logger.info("Loading PDF: %s", path)
-                loader = PyPDFLoader(str(path))
-                docs = loader.load()
-                chunks = self.splitter.split_documents(docs)
+                pages = PyPDFLoader(str(path)).load()
+                chunks = self.splitter.split_documents(pages)
+
+                for cid, ch in enumerate(chunks):
+                    ch.metadata.setdefault("source", str(path))
+                    ch.metadata["chunk_id"] = cid
+
                 all_chunks.extend(chunks)
+
             except Exception as e:
-                logger.warning("Failed to load PDF file %s: %s", path, e)
+                logger.warning("Failed to load PDF %s: %s", path, e)
 
         return all_chunks

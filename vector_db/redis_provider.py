@@ -12,28 +12,43 @@ logger = logging.getLogger(__name__)
 
 class RedisProvider(DBProvider):
     """
-    Redis-based vector DB provider using RediSearch and LangChain's Redis integration.
+    Redis-backed vector DB provider using RediSearch and LangChain's Redis integration.
+
+    This provider connects to a Redis instance, checks if the specified index exists,
+    and either loads from it or creates a new index on first insert. Vectors are stored
+    using the RediSearch module with configurable schema.
+
+    Attributes:
+        redis_client (redis.Redis): Raw Redis client for low-level access.
+        db (Optional[RedisVectorStore]): LangChain vector store, lazily created on first add.
 
     Args:
-        embedding_model (str): Embedding model to use
-        url (str): Redis connection string (e.g. redis://localhost:6379)
-        index (str): RediSearch index name (must be provided via .env)
-        schema (str): Path to RediSearch schema YAML file (must be provided via .env)
-
-    This provider will either load from an existing Redis index or defer creation
-    until documents are available.
+        embedding_model (str): Name of the embedding model to use for text chunks.
+        url (str): Redis connection string (e.g., "redis://localhost:6379").
+        index (str): RediSearch index name to use for vector storage.
+        schema (str): Path to schema file where the RediSearch index definition is written.
 
     Example:
+        >>> from vector_db.redis_provider import RedisProvider
         >>> provider = RedisProvider(
-        ...     embedding_model="sentence-transformers/all-mpnet-base-v2",
+        ...     embedding_model="BAAI/bge-large-en-v1.5",
         ...     url="redis://localhost:6379",
-        ...     index="docs",
+        ...     index="validated_docs",
         ...     schema="redis_schema.yaml"
         ... )
-        >>> provider.add_documents(chunks)
+        >>> provider.add_documents(docs)
     """
 
     def __init__(self, embedding_model: str, url: str, index: str, schema: str):
+        """
+        Initialize a Redis-backed vector store provider.
+
+        Args:
+            embedding_model (str): HuggingFace model for embeddings.
+            url (str): Redis connection string.
+            index (str): Name of the RediSearch index to use.
+            schema (str): Path to write RediSearch schema YAML (used on creation).
+        """
         super().__init__(embedding_model)
         self.url = url
         self.index = index
@@ -63,6 +78,12 @@ class RedisProvider(DBProvider):
             )
 
     def _index_exists(self) -> bool:
+        """
+        Check whether the Redis index already exists.
+
+        Returns:
+            bool: True if the index exists, False otherwise.
+        """
         try:
             self.redis_client.ft(self.index).info()
             return True
@@ -71,10 +92,10 @@ class RedisProvider(DBProvider):
 
     def add_documents(self, docs: List[Document]) -> None:
         """
-        Add document chunks to Redis vector store.
+        Add a list of documents to the Redis vector store.
 
         Args:
-            docs (List[Document]): Chunked LangChain documents to store.
+            docs (List[Document]): LangChain document chunks to embed and store.
         """
         if self.db is None:
             logger.info("Creating new Redis index: %s", self.index)
