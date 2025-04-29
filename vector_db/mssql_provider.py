@@ -109,7 +109,7 @@ class MSSQLProvider(DBProvider):
         """
         parts = self.connection_string.split(";")
         updated_parts = [
-            "Database=master" if p.lower().startswith("database=") else p
+            "Database=master" if p.strip().lower().startswith("database=") else p
             for p in parts
             if p
         ]
