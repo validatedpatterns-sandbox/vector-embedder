@@ -9,10 +9,10 @@ from dotenv import load_dotenv
 from vector_db.db_provider import DBProvider
 from vector_db.dryrun_provider import DryRunProvider
 from vector_db.elastic_provider import ElasticProvider
+from vector_db.mssql_provider import MSSQLProvider
 from vector_db.pgvector_provider import PGVectorProvider
 from vector_db.qdrant_provider import QdrantProvider
 from vector_db.redis_provider import RedisProvider
-from vector_db.sqlserver_provider import SQLServerProvider
 
 
 @dataclass
@@ -109,6 +109,7 @@ class Config:
         get = Config._get_required_env_var
         db_type = db_type.upper()
         embedding_model = get("EMBEDDING_MODEL")
+        embedding_length = int(get("EMBEDDING_LENGTH"))
 
         if db_type == "REDIS":
             url = get("REDIS_URL")
@@ -128,16 +129,11 @@ class Config:
             collection = get("PGVECTOR_COLLECTION_NAME")
             return PGVectorProvider(embedding_model, url, collection)
 
-        elif db_type == "SQLSERVER":
-            host = get("SQLSERVER_HOST")
-            port = get("SQLSERVER_PORT")
-            user = get("SQLSERVER_USER")
-            password = get("SQLSERVER_PASSWORD")
-            database = get("SQLSERVER_DB")
-            table = get("SQLSERVER_TABLE")
-            driver = get("SQLSERVER_DRIVER")
-            return SQLServerProvider(
-                embedding_model, host, port, user, password, database, table, driver
+        elif db_type == "MSSQL":
+            connection_string = get("MSSQL_CONNECTION_STRING")
+            table = get("MSSQL_TABLE")
+            return MSSQLProvider(
+                embedding_model, connection_string, table, embedding_length
             )
 
         elif db_type == "QDRANT":

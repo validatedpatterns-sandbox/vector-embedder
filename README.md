@@ -1,6 +1,8 @@
 # 📚 vector-embedder
 
-[![Docker Repository on Quay](https://quay.io/repository/dminnear/vector-embedder/status "Docker Repository on Quay")](https://quay.io/repository/dminnear/vector-embedder)
+[![Quay Repository](https://img.shields.io/badge/Quay.io-vector--embedder-blue?logo=quay)](https://quay.io/repository/hybridcloudpatterns/vector-embedder)
+[![CI](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml/badge.svg?branch=main)](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml)
+
 
 **vector-embedder** is a flexible, language-agnostic document ingestion and embedding pipeline. It transforms structured and unstructured content from multiple sources into vector embeddings and stores them in your vector database of choice.
 
