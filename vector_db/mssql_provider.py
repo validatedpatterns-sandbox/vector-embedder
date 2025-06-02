@@ -134,9 +134,14 @@ class MSSQLProvider(DBProvider):
                     f"IF DB_ID('{database}') IS NULL CREATE DATABASE [{database}]"
                 )
                 cursor.close()
-        except Exception as e:
+        except pyodbc.ProgrammingError as e:
+            if "1801" in str(e):
+                logger.info("Database %s already exists, continuing", database)
+                return
             logger.exception("Failed to ensure database '%s' exists", database)
-            raise RuntimeError(f"Failed to ensure database '{database}' exists: {e}")
+            raise RuntimeError(
+                f"Failed to ensure database '{database}' exists: {e}"
+            ) from e
 
     def add_documents(self, docs: List[Document]) -> None:
         """
