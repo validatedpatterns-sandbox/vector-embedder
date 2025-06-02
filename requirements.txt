@@ -1,5 +1,5 @@
 beautifulsoup4==4.13.4
-hf_xet==1.0.3
+hf_xet==1.1.2
 langchain-community==0.3.21
 langchain-elasticsearch==0.3.2
 langchain-huggingface==0.1.2
@@ -8,7 +8,6 @@ langchain-qdrant==0.2.0
 langchain-sqlserver==0.1.1
 langchain==0.3.23
 psycopg[binary]==3.2.6
-psycopg2-binary==2.9.10
 pyodbc==5.2.0
 pypdf==5.4.0
 python-dotenv==1.1.0
