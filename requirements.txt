@@ -13,6 +13,6 @@ pyodbc==5.2.0
 pypdf==5.6.0
 python-dotenv==1.1.0
 qdrant-client==1.14.2
-redis==6.2.0
+redis==5.2.1
 sentence-transformers==4.1.0
 unstructured[md]==0.17.2
