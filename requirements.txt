@@ -46,6 +46,8 @@ click==8.2.1
     # via
     #   nltk
     #   python-oxmsg
+coloredlogs==15.0.1
+    # via redisvl
 cryptography==45.0.3
     # via
     #   azure-identity
@@ -108,6 +110,8 @@ huggingface-hub==0.32.4
     #   sentence-transformers
     #   tokenizers
     #   transformers
+humanfriendly==10.0
+    # via coloredlogs
 hyperframe==6.1.0
     # via h2
 idna==3.10
@@ -117,7 +121,9 @@ idna==3.10
     #   requests
     #   yarl
 jinja2==3.1.6
-    # via torch
+    # via
+    #   langchain-redis
+    #   torch
 joblib==1.5.1
     # via
     #   nltk
@@ -140,6 +146,7 @@ langchain-core==0.3.63
     #   langchain-huggingface
     #   langchain-postgres
     #   langchain-qdrant
+    #   langchain-redis
     #   langchain-sqlserver
     #   langchain-text-splitters
 langchain-elasticsearch==0.3.2
@@ -149,6 +156,8 @@ langchain-huggingface==0.2.0
 langchain-postgres==0.0.14
     # via -r requirements.in
 langchain-qdrant==0.2.0
+    # via -r requirements.in
+langchain-redis==0.2.0
     # via -r requirements.in
 langchain-sqlserver==0.1.2
     # via -r requirements.in
@@ -169,6 +178,8 @@ markupsafe==3.0.2
     # via jinja2
 marshmallow==3.26.1
     # via dataclasses-json
+ml-dtypes==0.4.1
+    # via redisvl
 mpmath==1.3.0
     # via sympy
 msal==1.32.3
@@ -194,9 +205,12 @@ numpy==1.26.4
     #   elasticsearch
     #   langchain-community
     #   langchain-postgres
+    #   langchain-redis
     #   langchain-sqlserver
+    #   ml-dtypes
     #   pgvector
     #   qdrant-client
+    #   redisvl
     #   scikit-learn
     #   scipy
     #   transformers
@@ -263,12 +277,8 @@ protobuf==6.31.1
     # via qdrant-client
 psutil==7.0.0
     # via unstructured
-psycopg[binary]==3.2.9
-    # via
-    #   -r requirements.in
-    #   langchain-postgres
-psycopg-binary==3.2.9
-    # via psycopg
+psycopg==3.2.9
+    # via langchain-postgres
 psycopg-pool==3.2.6
     # via langchain-postgres
 pycparser==2.22
@@ -281,6 +291,7 @@ pydantic==2.11.5
     #   langsmith
     #   pydantic-settings
     #   qdrant-client
+    #   redisvl
     #   unstructured-client
 pydantic-core==2.33.2
     # via pydantic
@@ -310,12 +321,17 @@ python-magic==0.4.27
     # via unstructured
 python-oxmsg==0.0.2
     # via unstructured
+python-ulid==3.0.0
+    # via
+    #   langchain-redis
+    #   redisvl
 pyyaml==6.0.2
     # via
     #   huggingface-hub
     #   langchain
     #   langchain-community
     #   langchain-core
+    #   redisvl
     #   transformers
 qdrant-client==1.14.2
     # via
@@ -324,7 +340,9 @@ qdrant-client==1.14.2
 rapidfuzz==3.13.0
     # via unstructured
 redis==5.2.1
-    # via -r requirements.in
+    # via redisvl
+redisvl==0.4.1
+    # via langchain-redis
 regex==2024.11.6
     # via
     #   nltk
@@ -376,10 +394,13 @@ sqlalchemy==2.0.41
     #   langchain-sqlserver
 sympy==1.14.0
     # via torch
+tabulate==0.9.0
+    # via redisvl
 tenacity==9.1.2
     # via
     #   langchain-community
     #   langchain-core
+    #   redisvl
 threadpoolctl==3.6.0
     # via scikit-learn
 tokenizers==0.21.1

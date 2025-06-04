@@ -114,8 +114,7 @@ class Config:
         if db_type == "REDIS":
             url = get("REDIS_URL")
             index = os.getenv("REDIS_INDEX", "docs")
-            schema = os.getenv("REDIS_SCHEMA", "redis_schema.yaml")
-            return RedisProvider(embedding_model, url, index, schema)
+            return RedisProvider(embedding_model, url, index)
 
         elif db_type == "ELASTIC":
             url = get("ELASTIC_URL")

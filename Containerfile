@@ -18,7 +18,6 @@ COPY vector_db ./vector_db
 COPY loaders ./loaders
 COPY embed_documents.py .
 COPY config.py .
-COPY redis_schema.yaml .
 COPY .env .
 
 RUN chown -R 1001:0 .
