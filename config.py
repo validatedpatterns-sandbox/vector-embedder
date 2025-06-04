@@ -114,8 +114,7 @@ class Config:
         if db_type == "REDIS":
             url = get("REDIS_URL")
             index = os.getenv("REDIS_INDEX", "docs")
-            schema = os.getenv("REDIS_SCHEMA", "redis_schema.yaml")
-            return RedisProvider(embedding_model, url, index, schema)
+            return RedisProvider(embedding_model, url, index)
 
         elif db_type == "ELASTIC":
             url = get("ELASTIC_URL")
@@ -127,7 +126,7 @@ class Config:
         elif db_type == "PGVECTOR":
             url = get("PGVECTOR_URL")
             collection = get("PGVECTOR_COLLECTION_NAME")
-            return PGVectorProvider(embedding_model, url, collection)
+            return PGVectorProvider(embedding_model, url, collection, embedding_length)
 
         elif db_type == "MSSQL":
             connection_string = get("MSSQL_CONNECTION_STRING")

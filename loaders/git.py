@@ -81,15 +81,27 @@ class GitLoader:
             pdf_files = [f for f in matched_files if f.suffix.lower() == ".pdf"]
             text_files = [f for f in matched_files if f.suffix.lower() != ".pdf"]
 
+            docs: List[Document] = []
             if pdf_files:
                 logger.info("Loading %d PDF file(s) from %s", len(pdf_files), repo_url)
-                all_chunks.extend(self.pdf_loader.load(pdf_files))
+                docs.extend(self.pdf_loader.load(pdf_files))
 
             if text_files:
                 logger.info(
                     "Loading %d text file(s) from %s", len(text_files), repo_url
                 )
-                all_chunks.extend(self.text_loader.load(text_files))
+                docs.extend(self.text_loader.load(text_files))
+
+            for doc in docs:
+                local_src = Path(doc.metadata.get("source", ""))
+                try:
+                    rel_path = local_src.relative_to(repo_path)
+                except ValueError:
+                    rel_path = local_src
+
+                doc.metadata.update({"source": f"{repo_url}@{rel_path.as_posix()}"})
+
+            all_chunks.extend(docs)
 
         return all_chunks
 

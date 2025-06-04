@@ -8,6 +8,24 @@
 
 It supports Git repositories, web URLs, and file types like Markdown, PDFs, and HTML. Designed for local runs, containers, or OpenShift/Kubernetes jobs.
 
+- [📚 vector-embedder](#-vector-embedder)
+  - [⚙️ Features](#️-features)
+  - [🚀 Quick Start](#-quick-start)
+    - [1. Configuration](#1-configuration)
+    - [2. Run Locally](#2-run-locally)
+    - [3. Or Run in a Container](#3-or-run-in-a-container)
+  - [🧪 Dry Run Mode](#-dry-run-mode)
+  - [📦 Dependency Management \& Updates](#-dependency-management--updates)
+    - [🔧 Installing `pip-tools`](#-installing-pip-tools)
+    - [➕ Adding / Updating a Package](#-adding--updating-a-package)
+  - [🗂️ Project Layout](#️-project-layout)
+  - [🧪 Local DB Testing](#-local-db-testing)
+    - [PGVector (PostgreSQL)](#pgvector-postgresql)
+    - [Elasticsearch](#elasticsearch)
+    - [Redis (RediSearch)](#redis-redisearch)
+    - [Qdrant](#qdrant)
+  - [🙌 Acknowledgments](#-acknowledgments)
+
 ---
 
 ## ⚙️ Features
@@ -98,6 +116,43 @@ Run it:
 ```bash
 ./embed_documents.py
 ```
+
+---
+
+## 📦 Dependency Management & Updates
+
+This project keeps *two* dependency files under version control:
+
+| File | Purpose | Edited by |
+|------|---------|-----------|
+| **`requirements.in`** | Short, human-readable list of *top-level* libraries (no pins) | You |
+| **`requirements.txt`** | Fully-resolved, **pinned** lock file—including hashes—for exact, reproducible builds | `pip-compile` |
+
+### 🔧 Installing `pip-tools`
+
+```bash
+python -m pip install --upgrade pip-tools
+````
+
+### ➕ Adding / Updating a Package
+
+1. **Edit `requirements.in`**
+
+   ```diff
+   - sentence-transformers
+   + sentence-transformers>=4.1
+   + llama-index
+   ```
+2. **Re-lock** the environment
+
+   ```bash
+   pip-compile --upgrade
+   ```
+3. **Synchronise** your virtual-env
+
+   ```bash
+   pip-sync
+   ```
 
 ---
 

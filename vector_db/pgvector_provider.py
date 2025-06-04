@@ -3,7 +3,7 @@ from typing import List
 from urllib.parse import urlparse
 
 from langchain_core.documents import Document
-from langchain_postgres import PGVector
+from langchain_postgres import PGEngine, PGVectorStore
 
 from vector_db.db_provider import DBProvider
 
@@ -26,18 +26,26 @@ class PGVectorProvider(DBProvider):
         embedding_model (str): The model name to use for computing embeddings.
         url (str): PostgreSQL connection string (e.g. "postgresql://user:pass@host:5432/db").
         collection_name (str): Name of the table/collection used for storing vectors.
+        embedding_length (int): Dimensionality of the embeddings (e.g., 768 for all-mpnet-base-v2).
 
     Example:
         >>> from vector_db.pgvector_provider import PGVectorProvider
         >>> provider = PGVectorProvider(
         ...     embedding_model="BAAI/bge-base-en-v1.5",
         ...     url="postgresql://user:pass@localhost:5432/vector_db",
-        ...     collection_name="rag_chunks"
+        ...     collection_name="rag_chunks",
+        ...     embedding_length=768
         ... )
         >>> provider.add_documents(docs)
     """
 
-    def __init__(self, embedding_model: str, url: str, collection_name: str):
+    def __init__(
+        self,
+        embedding_model: str,
+        url: str,
+        collection_name: str,
+        embedding_length: int,
+    ):
         """
         Initialize a PGVectorProvider for use with PostgreSQL.
 
@@ -48,11 +56,10 @@ class PGVectorProvider(DBProvider):
         """
         super().__init__(embedding_model)
 
-        self.db = PGVector(
-            connection=url,
-            collection_name=collection_name,
-            embeddings=self.embeddings,
-        )
+        engine = PGEngine.from_connection_string(url)
+        engine.init_vectorstore_table(collection_name, embedding_length)
+
+        self.db = PGVectorStore.create_sync(engine, self.embeddings, collection_name)
 
         parsed = urlparse(url)
         postgres_location = (
