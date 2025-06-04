@@ -323,7 +323,7 @@ qdrant-client==1.14.2
     #   langchain-qdrant
 rapidfuzz==3.13.0
     # via unstructured
-redis==6.2.0
+redis==5.2.1
     # via -r requirements.in
 regex==2024.11.6
     # via

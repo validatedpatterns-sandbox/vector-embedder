@@ -12,6 +12,6 @@ pyodbc
 pypdf
 python-dotenv
 qdrant-client
-redis
+redis < 6.0.0
 sentence-transformers
 unstructured[md]
