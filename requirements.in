@@ -8,6 +8,7 @@ langchain-postgres
 langchain-qdrant
 langchain-redis
 langchain-sqlserver
+psycopg-binary
 pyodbc
 pypdf
 python-dotenv

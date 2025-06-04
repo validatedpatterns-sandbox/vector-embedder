@@ -279,6 +279,8 @@ psutil==7.0.0
     # via unstructured
 psycopg==3.2.9
     # via langchain-postgres
+psycopg-binary==3.2.9
+    # via -r requirements.in
 psycopg-pool==3.2.6
     # via langchain-postgres
 pycparser==2.22
