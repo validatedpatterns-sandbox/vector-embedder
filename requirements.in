@@ -1,0 +1,17 @@
+beautifulsoup4
+hf_xet
+langchain-community
+langchain-elasticsearch
+langchain-huggingface
+langchain-postgres
+langchain-qdrant
+langchain-sqlserver
+langchain
+psycopg[binary]
+pyodbc
+pypdf
+python-dotenv
+qdrant-client
+redis
+sentence-transformers
+unstructured[md]
