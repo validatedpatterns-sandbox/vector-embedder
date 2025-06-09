@@ -2,6 +2,7 @@ import logging
 from typing import List, Optional
 
 from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_qdrant import QdrantVectorStore
 from qdrant_client import QdrantClient
 from qdrant_client.http.models import Distance, VectorParams
@@ -22,18 +23,19 @@ class QdrantProvider(DBProvider):
     Attributes:
         client (QdrantClient): Low-level Qdrant client for managing collections.
         db (QdrantVectorStore): LangChain-compatible wrapper for vector operations.
-        embeddings (Embeddings): HuggingFace model for embedding chunks.
 
     Args:
-        embedding_model (str): HuggingFace model used for embedding document text.
+        embeddings (HuggingFaceEmbeddings): Pre-initialized HuggingFace embeddings instance.
         url (str): Base URL for the Qdrant service (e.g., "http://localhost:6333").
         collection (str): Name of the Qdrant collection to use.
         api_key (Optional[str]): Optional API key if authentication is required.
 
     Example:
+        >>> from langchain_huggingface import HuggingFaceEmbeddings
         >>> from vector_db.qdrant_provider import QdrantProvider
+        >>> embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
         >>> provider = QdrantProvider(
-        ...     embedding_model="BAAI/bge-base-en-v1.5",
+        ...     embeddings=embeddings,
         ...     url="http://localhost:6333",
         ...     collection="docs",
         ...     api_key=None
@@ -43,7 +45,7 @@ class QdrantProvider(DBProvider):
 
     def __init__(
         self,
-        embedding_model: str,
+        embeddings: HuggingFaceEmbeddings,
         url: str,
         collection: str,
         api_key: Optional[str] = None,
@@ -52,18 +54,18 @@ class QdrantProvider(DBProvider):
         Initialize the Qdrant vector DB provider.
 
         Args:
-            embedding_model (str): Name of the embedding model to use.
-            url (str): URL of the Qdrant instance (e.g., http://localhost:6333).
+            embeddings (HuggingFaceEmbeddings): Embedding model instance.
+            url (str): URL of the Qdrant instance.
             collection (str): Name of the collection to use or create.
-            api_key (Optional[str]): Optional Qdrant API key for authenticated instances.
+            api_key (Optional[str]): Optional Qdrant API key.
         """
-        super().__init__(embedding_model)
+        super().__init__(embeddings)
         self.collection = collection
         self.url = url
 
         self.client = QdrantClient(
             url=url,
-            api_key=api_key or None,
+            api_key=api_key,
         )
 
         if not self._collection_exists():
@@ -71,14 +73,12 @@ class QdrantProvider(DBProvider):
 
         self.db = QdrantVectorStore(
             client=self.client,
-            collection_name=collection,
+            collection_name=self.collection,
             embedding=self.embeddings,
         )
 
         logger.info(
-            "Connected to Qdrant instance at %s (collection: %s)",
-            self.url,
-            self.collection,
+            "Connected to Qdrant at %s (collection: %s)", self.url, self.collection
         )
 
     def _collection_exists(self) -> bool:
@@ -92,12 +92,13 @@ class QdrantProvider(DBProvider):
 
     def _create_collection(self) -> None:
         """
-        Create a new collection in Qdrant using the current embedding model's vector size.
+        Create a new collection in Qdrant using the computed embedding length.
         """
-        vector_size = len(self.embeddings.embed_query("test"))
         self.client.recreate_collection(
             collection_name=self.collection,
-            vectors_config=VectorParams(size=vector_size, distance=Distance.COSINE),
+            vectors_config=VectorParams(
+                size=self.embedding_length, distance=Distance.COSINE
+            ),
         )
 
     def add_documents(self, docs: List[Document]) -> None:
@@ -105,6 +106,6 @@ class QdrantProvider(DBProvider):
         Add a list of embedded documents to the Qdrant collection.
 
         Args:
-            docs (List[Document]): Chunked LangChain documents to store in Qdrant.
+            docs (List[Document]): LangChain documents to store in Qdrant.
         """
         self.db.add_documents(documents=docs)

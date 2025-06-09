@@ -3,6 +3,7 @@ from typing import List
 from urllib.parse import urlparse
 
 from langchain_core.documents import Document
+from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_postgres import PGEngine, PGVectorStore
 
 from vector_db.db_provider import DBProvider
@@ -19,45 +20,44 @@ class PGVectorProvider(DBProvider):
     `pgvector` extension in the target database.
 
     Attributes:
-        db (PGVector): LangChain-compatible PGVector client for vector storage.
-        embeddings (Embeddings): HuggingFace model for generating document vectors.
+        db (PGVectorStore): LangChain-compatible PGVector client for vector storage.
+        embeddings (HuggingFaceEmbeddings): HuggingFace model for generating document vectors.
 
     Args:
-        embedding_model (str): The model name to use for computing embeddings.
-        url (str): PostgreSQL connection string (e.g. "postgresql://user:pass@host:5432/db").
+        embeddings (HuggingFaceEmbeddings): HuggingFace embeddings instance.
+        url (str): PostgreSQL connection string (e.g., "postgresql://user:pass@host:5432/db").
         collection_name (str): Name of the table/collection used for storing vectors.
-        embedding_length (int): Dimensionality of the embeddings (e.g., 768 for all-mpnet-base-v2).
 
     Example:
+        >>> from langchain_huggingface import HuggingFaceEmbeddings
         >>> from vector_db.pgvector_provider import PGVectorProvider
+        >>> embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-base-en-v1.5")
         >>> provider = PGVectorProvider(
-        ...     embedding_model="BAAI/bge-base-en-v1.5",
+        ...     embeddings=embeddings,
         ...     url="postgresql://user:pass@localhost:5432/vector_db",
-        ...     collection_name="rag_chunks",
-        ...     embedding_length=768
+        ...     collection_name="rag_chunks"
         ... )
         >>> provider.add_documents(docs)
     """
 
     def __init__(
         self,
-        embedding_model: str,
+        embeddings: HuggingFaceEmbeddings,
         url: str,
         collection_name: str,
-        embedding_length: int,
     ):
         """
         Initialize a PGVectorProvider for use with PostgreSQL.
 
         Args:
-            embedding_model (str): HuggingFace model used for embedding chunks.
-            url (str): Connection string to PostgreSQL with pgvector enabled.
+            embeddings (HuggingFaceEmbeddings): Embedding model for vector generation.
+            url (str): PostgreSQL connection string with pgvector enabled.
             collection_name (str): Name of the vector table in the database.
         """
-        super().__init__(embedding_model)
+        super().__init__(embeddings)
 
         engine = PGEngine.from_connection_string(url)
-        engine.init_vectorstore_table(collection_name, embedding_length)
+        engine.init_vectorstore_table(collection_name, self.embedding_length)
 
         self.db = PGVectorStore.create_sync(engine, self.embeddings, collection_name)
 
@@ -75,9 +75,8 @@ class PGVectorProvider(DBProvider):
         """
         Store a list of documents in the PGVector collection.
 
-        This will embed the documents using the configured model and persist them
-        to the PostgreSQL backend. Any null bytes (\\x00) are removed from text to
-        prevent PostgreSQL errors.
+        This embeds documents using the provided model and persists them
+        to the PostgreSQL backend. Null bytes (\\x00) are stripped to prevent DB errors.
 
         Args:
             docs (List[Document]): Chunked LangChain documents to store.
