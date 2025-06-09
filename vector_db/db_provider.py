@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
 from langchain_huggingface import HuggingFaceEmbeddings
 
 
@@ -11,34 +10,35 @@ class DBProvider(ABC):
     Abstract base class for vector database providers.
 
     This class standardizes how vector databases are initialized and how documents
-    are added to them. All concrete implementations (e.g., Qdrant, FAISS) must
+    are added to them. All concrete implementations (e.g., Qdrant, Redis) must
     subclass `DBProvider` and implement the `add_documents()` method.
 
     Attributes:
-        embeddings (Embeddings): An instance of HuggingFace embeddings based on the
-                                 specified model.
+        embeddings (HuggingFaceEmbeddings): An instance of HuggingFace embeddings.
+        embedding_length (int): Dimensionality of the embedding vector.
 
     Args:
-        embedding_model (str): HuggingFace-compatible model name to be used for computing
-                               dense vector embeddings for documents.
+        embeddings (HuggingFaceEmbeddings): A preconfigured HuggingFaceEmbeddings instance.
 
     Example:
         >>> class MyProvider(DBProvider):
         ...     def add_documents(self, docs):
-        ...         print(f"Would add {len(docs)} docs with model {self.embeddings.model_name}")
+        ...         print(f"Would add {len(docs)} docs with vector size {self.embedding_length}")
 
-        >>> provider = MyProvider("BAAI/bge-small-en")
+        >>> embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-small-en")
+        >>> provider = MyProvider(embeddings)
         >>> provider.add_documents([Document(page_content="Hello")])
     """
 
-    def __init__(self, embedding_model: str) -> None:
+    def __init__(self, embeddings: HuggingFaceEmbeddings) -> None:
         """
-        Initialize a DB provider with a specific embedding model.
+        Initialize a DB provider with a HuggingFaceEmbeddings instance.
 
         Args:
-            embedding_model (str): The HuggingFace model name to be used for generating embeddings.
+            embeddings (HuggingFaceEmbeddings): The embeddings object used for vectorization.
         """
-        self.embeddings: Embeddings = HuggingFaceEmbeddings(model_name=embedding_model)
+        self.embeddings: HuggingFaceEmbeddings = embeddings
+        self.embedding_length: int = len(self.embeddings.embed_query("query"))
 
     @abstractmethod
     def add_documents(self, docs: List[Document]) -> None:
@@ -46,7 +46,7 @@ class DBProvider(ABC):
         Add documents to the vector database.
 
         This method must be implemented by subclasses to define how documents
-        (with or without precomputed embeddings) are stored in the backend vector DB.
+        are embedded and stored in the backend vector DB.
 
         Args:
             docs (List[Document]): A list of LangChain `Document` objects to be embedded and added.

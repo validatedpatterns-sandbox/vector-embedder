@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, List
 
 from dotenv import load_dotenv
+from langchain_huggingface import HuggingFaceEmbeddings
 
 from vector_db.db_provider import DBProvider
 from vector_db.dryrun_provider import DryRunProvider
@@ -108,40 +109,37 @@ class Config:
         """
         get = Config._get_required_env_var
         db_type = db_type.upper()
-        embedding_model = get("EMBEDDING_MODEL")
-        embedding_length = int(get("EMBEDDING_LENGTH"))
+        embeddings = HuggingFaceEmbeddings(model_name=get("EMBEDDING_MODEL"))
 
         if db_type == "REDIS":
             url = get("REDIS_URL")
             index = os.getenv("REDIS_INDEX", "docs")
-            return RedisProvider(embedding_model, url, index)
+            return RedisProvider(embeddings, url, index)
 
         elif db_type == "ELASTIC":
             url = get("ELASTIC_URL")
             password = get("ELASTIC_PASSWORD")
             index = os.getenv("ELASTIC_INDEX", "docs")
             user = os.getenv("ELASTIC_USER", "elastic")
-            return ElasticProvider(embedding_model, url, password, index, user)
+            return ElasticProvider(embeddings, url, password, index, user)
 
         elif db_type == "PGVECTOR":
             url = get("PGVECTOR_URL")
             collection = get("PGVECTOR_COLLECTION_NAME")
-            return PGVectorProvider(embedding_model, url, collection, embedding_length)
+            return PGVectorProvider(embeddings, url, collection)
 
         elif db_type == "MSSQL":
             connection_string = get("MSSQL_CONNECTION_STRING")
             table = get("MSSQL_TABLE")
-            return MSSQLProvider(
-                embedding_model, connection_string, table, embedding_length
-            )
+            return MSSQLProvider(embeddings, connection_string, table)
 
         elif db_type == "QDRANT":
             url = get("QDRANT_URL")
             collection = get("QDRANT_COLLECTION")
-            return QdrantProvider(embedding_model, url, collection)
+            return QdrantProvider(embeddings, url, collection)
 
         elif db_type == "DRYRUN":
-            return DryRunProvider(embedding_model)
+            return DryRunProvider(embeddings)
 
         raise ValueError(f"Unsupported DB_TYPE '{db_type}'")
 
