@@ -24,6 +24,7 @@ It supports Git repositories, web URLs, and file types like Markdown, PDFs, and 
     - [Elasticsearch](#elasticsearch)
     - [Redis (RediSearch)](#redis-redisearch)
     - [Qdrant](#qdrant)
+    - [SQL Server (MSSQL)](#sql-server-mssql)
   - [🙌 Acknowledgments](#-acknowledgments)
 
 ---
@@ -238,6 +239,24 @@ podman run -d \
 
 ```bash
 DB_TYPE=QDRANT ./embed_documents.py
+```
+
+---
+
+### SQL Server (MSSQL)
+
+
+```bash
+podman run --rm -d \
+  --name mssql \
+  -e ACCEPT_EULA=Y \
+  -e SA_PASSWORD=StrongPassword! \
+  -p 1433:1433 \
+  mcr.microsoft.com/mssql/rhel/server:2025-latest
+````
+
+```bash
+DB_TYPE=MSSQL ./embed_documents.py
 ```
 
 ---
