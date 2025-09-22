@@ -1,3 +1,5 @@
+"""Abstract base class for vector database providers."""
+
 from abc import ABC, abstractmethod
 from typing import List
 
@@ -51,4 +53,3 @@ class DBProvider(ABC):
         Args:
             docs (List[Document]): A list of LangChain `Document` objects to be embedded and added.
         """
-        pass

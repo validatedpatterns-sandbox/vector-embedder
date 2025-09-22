@@ -1,7 +1,8 @@
+"""Dry run vector database provider for testing and debugging."""
+
 from typing import List
 
 from langchain_core.documents import Document
-from langchain_huggingface import HuggingFaceEmbeddings
 
 from vector_db.db_provider import DBProvider
 
@@ -15,7 +16,8 @@ class DryRunProvider(DBProvider):
     to validate chunking, structure, and metadata before pushing to a production vector store.
 
     Attributes:
-        embeddings (HuggingFaceEmbeddings): HuggingFace embedding instance, used for interface consistency.
+        embeddings (HuggingFaceEmbeddings): HuggingFace embedding instance, used for interface
+            consistency.
         embedding_length (int): Dimensionality of embeddings (computed for validation, not used).
 
     Args:
@@ -30,15 +32,6 @@ class DryRunProvider(DBProvider):
         >>> docs = [Document(page_content="Hello world", metadata={"source": "test.txt"})]
         >>> provider.add_documents(docs)
     """
-
-    def __init__(self, embeddings: HuggingFaceEmbeddings):
-        """
-        Initialize the dry run provider with a placeholder embedding model.
-
-        Args:
-            embeddings (HuggingFaceEmbeddings): A HuggingFace embedding model (used for compatibility).
-        """
-        super().__init__(embeddings)
 
     def add_documents(self, docs: List[Document]) -> None:
         """

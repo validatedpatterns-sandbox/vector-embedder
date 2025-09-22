@@ -1,3 +1,5 @@
+"""Elasticsearch vector database provider implementation."""
+
 import logging
 from typing import List
 
@@ -43,7 +45,7 @@ class ElasticProvider(DBProvider):
         >>> provider.add_documents(docs)
     """
 
-    def __init__(
+    def __init__(  # pylint: disable=too-many-arguments,too-many-positional-arguments
         self,
         embeddings: HuggingFaceEmbeddings,
         url: str,

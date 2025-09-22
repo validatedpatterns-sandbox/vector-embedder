@@ -1,18 +1,22 @@
-FROM registry.access.redhat.com/ubi9/python-312:9.5
+FROM registry.access.redhat.com/ubi10/python-312-minimal:10.0
 
 USER root
+
 WORKDIR /app
 
-RUN dnf install -y \
+RUN microdnf install -y git \
     unixODBC \
     unixODBC-devel && \
     curl -sSL https://packages.microsoft.com/config/rhel/9/prod.repo -o /etc/yum.repos.d/mssql-release.repo && \
-    ACCEPT_EULA=Y dnf install -y msodbcsql18 && \
-    dnf clean all
+    ACCEPT_EULA=Y microdnf install -y msodbcsql18 && \
+    microdnf clean all
 
 COPY requirements.txt .
-RUN pip install --upgrade pip && \
-    pip install -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install \
+      --no-cache-dir \
+      --compile \
+      -r requirements.txt
 
 COPY vector_db ./vector_db
 COPY loaders ./loaders
@@ -24,4 +28,4 @@ RUN chown -R 1001:0 .
 
 USER 1001
 
-CMD ./embed_documents.py
+CMD ["python", "./embed_documents.py"]

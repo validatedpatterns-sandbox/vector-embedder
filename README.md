@@ -1,8 +1,8 @@
 # 📚 vector-embedder
 
-[![Quay Repository](https://img.shields.io/badge/Quay.io-vector--embedder-blue?logo=quay)](https://quay.io/repository/hybridcloudpatterns/vector-embedder)
-[![CI](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml/badge.svg?branch=main)](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml)
-
+![Version: 1.0.0](https://img.shields.io/badge/Version-1.0.0-informational?style=flat-square)
+[![Quay Repository](https://img.shields.io/badge/Quay.io-vector--embedder-blue?logo=quay)](https://quay.io/repository/validatedpatterns/vector-embedder)
+[![CI Pipeline](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml/badge.svg?branch=main)](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml)
 
 **vector-embedder** is a flexible, language-agnostic document ingestion and embedding pipeline. It transforms structured and unstructured content from multiple sources into vector embeddings and stores them in your vector database of choice.
 
@@ -122,18 +122,18 @@ Run it:
 
 ## 📦 Dependency Management & Updates
 
-This project keeps *two* dependency files under version control:
+This project keeps _two_ dependency files under version control:
 
-| File | Purpose | Edited by |
-|------|---------|-----------|
-| **`requirements.in`** | Short, human-readable list of *top-level* libraries (no pins) | You |
+| File                   | Purpose                                                                              | Edited by     |
+| ---------------------- | ------------------------------------------------------------------------------------ | ------------- |
+| **`requirements.in`**  | Short, human-readable list of _top-level_ libraries (no pins)                        | You           |
 | **`requirements.txt`** | Fully-resolved, **pinned** lock file—including hashes—for exact, reproducible builds | `pip-compile` |
 
 ### 🔧 Installing `pip-tools`
 
 ```bash
 python -m pip install --upgrade pip-tools
-````
+```
 
 ### ➕ Adding / Updating a Package
 
@@ -144,11 +144,13 @@ python -m pip install --upgrade pip-tools
    + sentence-transformers>=4.1
    + llama-index
    ```
+
 2. **Re-lock** the environment
 
    ```bash
    pip-compile --upgrade
    ```
+
 3. **Synchronise** your virtual-env
 
    ```bash
@@ -159,7 +161,7 @@ python -m pip install --upgrade pip-tools
 
 ## 🗂️ Project Layout
 
-```
+```text
 .
 ├── embed_documents.py      # Main entrypoint script
 ├── config.py               # Config loader from env
@@ -245,7 +247,6 @@ DB_TYPE=QDRANT ./embed_documents.py
 
 ### SQL Server (MSSQL)
 
-
 ```bash
 podman run --rm -d \
   --name mssql \
@@ -253,7 +254,7 @@ podman run --rm -d \
   -e SA_PASSWORD=StrongPassword! \
   -p 1433:1433 \
   mcr.microsoft.com/mssql/rhel/server:2025-latest
-````
+```
 
 ```bash
 DB_TYPE=MSSQL ./embed_documents.py

@@ -1,3 +1,5 @@
+"""Configuration management for vector database embedder application."""
+
 import json
 import logging
 import os
@@ -31,7 +33,6 @@ class Config:
         web_sources (List[str]): List of web URLs to scrape and embed.
         repo_sources (List[Dict]): Repositories and glob patterns for file discovery.
         temp_dir (str): Path to a temporary working directory.
-        log_level (int): Log verbosity level.
 
     Example:
         >>> config = Config.load()
@@ -45,7 +46,6 @@ class Config:
     web_sources: List[str]
     repo_sources: List[Dict]
     temp_dir: str
-    log_level: int
 
     @staticmethod
     def _get_required_env_var(key: str) -> str:
@@ -89,7 +89,8 @@ class Config:
         }
         if log_level_name not in log_levels:
             raise ValueError(
-                f"Invalid LOG_LEVEL: '{log_level_name}'. Must be one of: {', '.join(log_levels.keys())}"
+                f"Invalid LOG_LEVEL: '{log_level_name}'. "
+                f"Must be one of: {', '.join(log_levels.keys())}"
             )
         return log_levels[log_level_name]
 
@@ -111,37 +112,33 @@ class Config:
         db_type = db_type.upper()
         embeddings = HuggingFaceEmbeddings(model_name=get("EMBEDDING_MODEL"))
 
-        if db_type == "REDIS":
-            url = get("REDIS_URL")
-            index = os.getenv("REDIS_INDEX", "docs")
-            return RedisProvider(embeddings, url, index)
-
-        elif db_type == "ELASTIC":
-            url = get("ELASTIC_URL")
-            password = get("ELASTIC_PASSWORD")
-            index = os.getenv("ELASTIC_INDEX", "docs")
-            user = os.getenv("ELASTIC_USER", "elastic")
-            return ElasticProvider(embeddings, url, password, index, user)
-
-        elif db_type == "PGVECTOR":
-            url = get("PGVECTOR_URL")
-            collection = get("PGVECTOR_COLLECTION_NAME")
-            return PGVectorProvider(embeddings, url, collection)
-
-        elif db_type == "MSSQL":
-            connection_string = get("MSSQL_CONNECTION_STRING")
-            table = get("MSSQL_TABLE")
-            return MSSQLProvider(embeddings, connection_string, table)
-
-        elif db_type == "QDRANT":
-            url = get("QDRANT_URL")
-            collection = get("QDRANT_COLLECTION")
-            return QdrantProvider(embeddings, url, collection)
-
-        elif db_type == "DRYRUN":
-            return DryRunProvider(embeddings)
-
-        raise ValueError(f"Unsupported DB_TYPE '{db_type}'")
+        match db_type:
+            case "REDIS":
+                url = get("REDIS_URL")
+                index = os.getenv("REDIS_INDEX", "docs")
+                return RedisProvider(embeddings, url, index)
+            case "ELASTIC":
+                url = get("ELASTIC_URL")
+                password = get("ELASTIC_PASSWORD")
+                index = os.getenv("ELASTIC_INDEX", "docs")
+                user = os.getenv("ELASTIC_USER", "elastic")
+                return ElasticProvider(embeddings, url, password, index, user)
+            case "PGVECTOR":
+                url = get("PGVECTOR_URL")
+                collection = get("PGVECTOR_COLLECTION_NAME")
+                return PGVectorProvider(embeddings, url, collection)
+            case "MSSQL":
+                connection_string = get("MSSQL_CONNECTION_STRING")
+                table = get("MSSQL_TABLE")
+                return MSSQLProvider(embeddings, connection_string, table)
+            case "QDRANT":
+                url = get("QDRANT_URL")
+                collection = get("QDRANT_COLLECTION")
+                return QdrantProvider(embeddings, url, collection)
+            case "DRYRUN":
+                return DryRunProvider(embeddings)
+            case _:
+                raise ValueError(f"Unsupported DB_TYPE '{db_type}'")
 
     @staticmethod
     def load() -> "Config":
@@ -162,7 +159,11 @@ class Config:
 
         # Logging setup
         log_level = get("LOG_LEVEL").upper()
-        logging.basicConfig(level=Config._parse_log_level(log_level))
+        logging.basicConfig(
+            level=Config._parse_log_level(log_level),
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            datefmt="%Y-%m-%d %H:%M:%S",
+        )
         logger = logging.getLogger(__name__)
         logger.debug("Logging initialized at level: %s", log_level)
 
@@ -174,7 +175,7 @@ class Config:
         try:
             web_sources = json.loads(get("WEB_SOURCES"))
         except json.JSONDecodeError as e:
-            raise ValueError(f"WEB_SOURCES must be a valid JSON list: {e}")
+            raise ValueError(f"WEB_SOURCES must be a valid JSON list: {e}") from e
 
         # Git repositories and file matchers
         try:
@@ -196,5 +197,4 @@ class Config:
             web_sources=web_sources,
             repo_sources=repo_sources,
             temp_dir=temp_dir,
-            log_level=log_level,
         )

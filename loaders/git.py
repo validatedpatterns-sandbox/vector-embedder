@@ -1,3 +1,5 @@
+"""Git repository document loader for cloning and processing repository contents."""
+
 import logging
 import shutil
 import subprocess

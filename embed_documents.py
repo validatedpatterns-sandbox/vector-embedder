@@ -60,6 +60,83 @@ def _fail_and_exit(message: str, exc: Exception) -> None:
     raise exc
 
 
+def _process_git_documents() -> None:
+    """Process Git-based document sources and add to vector DB."""
+    if not config.repo_sources:
+        return
+
+    logger.info("Starting Git-based document embedding...")
+    try:
+        git_loader = GitLoader(config)
+        git_chunks = git_loader.load()
+
+        if git_chunks:
+            logger.info("Adding %d Git document chunks to vector DB", len(git_chunks))
+            config.db_provider.add_documents(git_chunks)
+        else:
+            logger.info("No documents found in Git sources.")
+    except Exception as e:
+        _fail_and_exit("Failed during Git document processing", e)
+
+
+def _process_html_documents(html_urls: list) -> None:
+    """Process HTML web documents and add to vector DB."""
+    if not html_urls:
+        return
+
+    logger.info("Starting HTML-based web document embedding...")
+    try:
+        web_loader = WebLoader(config)
+        web_chunks = web_loader.load(html_urls)
+
+        if web_chunks:
+            logger.info("Adding %d HTML web chunks to vector DB", len(web_chunks))
+            config.db_provider.add_documents(web_chunks)
+        else:
+            logger.info("No chunks produced from HTML URLs.")
+    except Exception as e:
+        _fail_and_exit("Failed during HTML web document processing", e)
+
+
+def _process_pdf_documents(pdf_urls: list) -> None:
+    """Download and process PDF documents from web URLs and add to vector DB."""
+    if not pdf_urls:
+        return
+
+    logger.info("Downloading PDF documents from web URLs...")
+    pdf_dir = Path(config.temp_dir) / "web_pdfs"
+    pdf_dir.mkdir(parents=True, exist_ok=True)
+
+    downloaded_files = []
+    for url in pdf_urls:
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+
+            filename = Path(url.split("/")[-1])
+            file_path = pdf_dir / filename
+            with open(file_path, "wb") as f:
+                f.write(response.content)
+
+            logger.info("Downloaded: %s", file_path)
+            downloaded_files.append(file_path)
+        except Exception as e:
+            _fail_and_exit(f"Failed to download {url}", e)
+
+    if downloaded_files:
+        try:
+            pdf_loader = PDFLoader(config)
+            pdf_chunks = pdf_loader.load(downloaded_files)
+
+            if pdf_chunks:
+                logger.info("Adding %d PDF web chunks to vector DB", len(pdf_chunks))
+                config.db_provider.add_documents(pdf_chunks)
+            else:
+                logger.info("No chunks produced from downloaded PDFs.")
+        except Exception as e:
+            _fail_and_exit("Failed during PDF web document processing", e)
+
+
 def main() -> None:
     """
     Main embedding workflow for Git, HTML, and PDF sources.
@@ -72,82 +149,13 @@ def main() -> None:
 
     All errors are logged with traceback and will stop execution via `_fail_and_exit`.
     """
-    # ───────────────────────────────────────────────────────────────
-    # Git-based document ingestion
-    # ───────────────────────────────────────────────────────────────
-    if config.repo_sources:
-        logger.info("Starting Git-based document embedding...")
-        try:
-            git_loader = GitLoader(config)
-            git_chunks = git_loader.load()
+    _process_git_documents()
 
-            if git_chunks:
-                logger.info(
-                    "Adding %d Git document chunks to vector DB", len(git_chunks)
-                )
-                config.db_provider.add_documents(git_chunks)
-            else:
-                logger.info("No documents found in Git sources.")
-        except Exception as e:
-            _fail_and_exit("Failed during Git document processing", e)
-
-    # ───────────────────────────────────────────────────────────────
-    # Web-based document ingestion
-    # ───────────────────────────────────────────────────────────────
     pdf_urls = [url for url in config.web_sources if url.lower().endswith(".pdf")]
     html_urls = [url for url in config.web_sources if not url.lower().endswith(".pdf")]
 
-    # HTML documents
-    if html_urls:
-        logger.info("Starting HTML-based web document embedding...")
-        try:
-            web_loader = WebLoader(config)
-            web_chunks = web_loader.load(html_urls)
-
-            if web_chunks:
-                logger.info("Adding %d HTML web chunks to vector DB", len(web_chunks))
-                config.db_provider.add_documents(web_chunks)
-            else:
-                logger.info("No chunks produced from HTML URLs.")
-        except Exception as e:
-            _fail_and_exit("Failed during HTML web document processing", e)
-
-    # PDF documents
-    if pdf_urls:
-        logger.info("Downloading PDF documents from web URLs...")
-        pdf_dir = Path(config.temp_dir) / "web_pdfs"
-        pdf_dir.mkdir(parents=True, exist_ok=True)
-
-        downloaded_files = []
-        for url in pdf_urls:
-            try:
-                response = requests.get(url)
-                response.raise_for_status()
-
-                filename = Path(url.split("/")[-1])
-                file_path = pdf_dir / filename
-                with open(file_path, "wb") as f:
-                    f.write(response.content)
-
-                logger.info("Downloaded: %s", file_path)
-                downloaded_files.append(file_path)
-            except Exception as e:
-                _fail_and_exit(f"Failed to download {url}", e)
-
-        if downloaded_files:
-            try:
-                pdf_loader = PDFLoader(config)
-                pdf_chunks = pdf_loader.load(downloaded_files)
-
-                if pdf_chunks:
-                    logger.info(
-                        "Adding %d PDF web chunks to vector DB", len(pdf_chunks)
-                    )
-                    config.db_provider.add_documents(pdf_chunks)
-                else:
-                    logger.info("No chunks produced from downloaded PDFs.")
-            except Exception as e:
-                _fail_and_exit("Failed during PDF web document processing", e)
+    _process_html_documents(html_urls)
+    _process_pdf_documents(pdf_urls)
 
     logger.info("Embedding job complete.")
 

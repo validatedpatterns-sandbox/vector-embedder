@@ -1,3 +1,5 @@
+"""Microsoft SQL Server vector database provider implementation."""
+
 import logging
 import re
 from typing import List, Optional
@@ -35,7 +37,11 @@ class MSSQLProvider(DBProvider):
         >>> embeddings = HuggingFaceEmbeddings(model_name="BAAI/bge-large-en-v1.5")
         >>> provider = MSSQLProvider(
         ...     embeddings=embeddings,
-        ...     connection_string="Driver={ODBC Driver 18 for SQL Server};Server=localhost,1433;Database=docs;UID=sa;PWD=StrongPassword!;TrustServerCertificate=yes;Encrypt=no;",
+        ...     connection_string=(
+        ...         "Driver={ODBC Driver 18 for SQL Server};"
+        ...         "Server=localhost,1433;Database=docs;UID=sa;"
+        ...         "PWD=StrongPassword!;TrustServerCertificate=yes;Encrypt=no;"
+        ...     ),
         ...     table="embedded_docs",
         ... )
         >>> provider.add_documents(docs)
