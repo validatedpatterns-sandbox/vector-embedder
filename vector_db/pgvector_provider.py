@@ -1,3 +1,5 @@
+"""PostgreSQL with pgvector extension vector database provider implementation."""
+
 import logging
 from typing import List
 from urllib.parse import urlparse

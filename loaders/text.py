@@ -1,3 +1,5 @@
+"""Text document loader for processing various text-based file formats."""
+
 import logging
 from pathlib import Path
 from typing import List
@@ -50,6 +52,56 @@ class TextLoader:
             chunk_overlap=config.chunk_overlap,
         )
 
+    def _process_single_file(self, path: Path) -> List[Document]:
+        """Process a single file and return its document chunks."""
+        logger.info("Partitioning %s", path)
+        elements = partition(filename=str(path), strategy="fast")
+
+        buf: List[str] = []
+        buf_len, chunk_idx = 0, 0
+        fname = path.name
+        source_str = str(path)
+        chunks = []
+
+        def _flush():
+            nonlocal buf, buf_len, chunk_idx
+            if not buf_len:
+                return
+            chunks.append(
+                Document(
+                    page_content="\n".join(buf).strip(),
+                    metadata={
+                        "source": source_str,
+                        "chunk_id": chunk_idx,
+                    },
+                )
+            )
+            buf, buf_len = [], 0
+            chunk_idx += 1
+
+        for el in elements:
+            txt = getattr(el, "text", "").strip()
+            if not txt:
+                continue
+            if buf_len == 0:
+                buf.append(f"## {fname}\n")  # inject heading
+            if buf_len + len(txt) > self.config.chunk_size:
+                _flush()
+            buf.append(txt)
+            buf_len += len(txt)
+        _flush()
+
+        return chunks
+
+    def _add_chunk_totals(self, docs: List[Document]) -> None:
+        """Add chunk_total metadata to all documents."""
+        counts: dict[str, int] = {}
+        for doc in docs:
+            source = doc.metadata["source"]
+            counts[source] = counts.get(source, 0) + 1
+        for doc in docs:
+            doc.metadata["chunk_total"] = counts[doc.metadata["source"]]
+
     def load(self, paths: List[Path]) -> List[Document]:
         """
         Loads and splits a list of text files into semantic chunks.
@@ -76,44 +128,12 @@ class TextLoader:
             - Each chunk begins with a lightweight heading that includes the
               filename to help orient the LLM when formatting prompts.
         """
-        grouped: list[Document] = []
+        grouped = []
 
         for path in paths:
             try:
-                logger.info("Partitioning %s", path)
-                elements = partition(filename=str(path), strategy="fast")
-
-                buf, buf_len, chunk_idx = [], 0, 0
-                fname = Path(path).name
-
-                def _flush():
-                    nonlocal buf, buf_len, chunk_idx
-                    if not buf_len:
-                        return
-                    grouped.append(
-                        Document(
-                            page_content="\n".join(buf).strip(),
-                            metadata={
-                                "source": str(path),
-                                "chunk_id": chunk_idx,
-                            },
-                        )
-                    )
-                    buf, buf_len = [], 0
-                    chunk_idx += 1
-
-                for el in elements:
-                    txt = getattr(el, "text", "").strip()
-                    if not txt:
-                        continue
-                    if buf_len == 0:
-                        buf.append(f"## {fname}\n")  # inject heading
-                    if buf_len + len(txt) > self.config.chunk_size:
-                        _flush()
-                    buf.append(txt)
-                    buf_len += len(txt)
-                _flush()
-
+                chunks = self._process_single_file(path)
+                grouped.extend(chunks)
             except Exception as e:
                 logger.warning("Failed to load %s: %s", path, e)
 
@@ -126,11 +146,7 @@ class TextLoader:
                 final_docs.append(doc)
 
         # Add chunk_total metadata for all docs
-        counts: dict[str, int] = {}
-        for d in final_docs:
-            counts[d.metadata["source"]] = counts.get(d.metadata["source"], 0) + 1
-        for d in final_docs:
-            d.metadata["chunk_total"] = counts[d.metadata["source"]]
+        self._add_chunk_totals(final_docs)
 
         logger.info(
             "Produced %d chunks (avg %.0f chars)",

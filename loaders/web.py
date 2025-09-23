@@ -1,3 +1,5 @@
+"""Web document loader for fetching and processing HTML content from URLs."""
+
 import logging
 from typing import Dict, List
 

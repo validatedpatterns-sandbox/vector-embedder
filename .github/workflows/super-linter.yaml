@@ -1,0 +1,16 @@
+name: Super linter
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    uses: validatedpatterns/github-actions-library/.github/workflows/superlinter.yml@v1
+    with:
+      sl_env: |
+        VALIDATE_TRIVY=false
+        VALIDATE_PYTHON_ISORT=false

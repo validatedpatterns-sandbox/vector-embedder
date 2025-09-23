@@ -1,3 +1,5 @@
+"""PDF document loader for extracting and chunking text from PDF files."""
+
 import logging
 from pathlib import Path
 from typing import List

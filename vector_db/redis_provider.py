@@ -1,3 +1,5 @@
+"""Redis vector database provider implementation."""
+
 import logging
 from typing import List
 
