@@ -108,7 +108,7 @@ jobs:
         run: |
           podman run -d --name es-test \
             -e "discovery.type=single-node" \
-            -e "xpack.security.enabled=true" \
+            -e "xpack.security.enabled=false" \
             -e "ELASTIC_PASSWORD=changeme" \
             -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
             -p 9200:9200 \
