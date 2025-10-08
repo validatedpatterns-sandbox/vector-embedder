@@ -109,10 +109,10 @@ jobs:
           podman run -d --name es-test \
             -e "discovery.type=single-node" \
             -e "xpack.security.enabled=false" \
+            -e "xpack.security.http.ssl.enabled=false" \
             -e "ELASTIC_PASSWORD=changeme" \
-            -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
             -p 9200:9200 \
-            elasticsearch:8.11.1
+            docker.elastic.co/elasticsearch/elasticsearch:8.12.1
 
       - name: Start Qdrant
         if: matrix.db == 'qdrant'
