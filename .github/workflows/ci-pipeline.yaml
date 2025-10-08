@@ -30,6 +30,11 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      # Depending on exactly how much space the runner has we may run into issues with the container build below.
+      # Deleting the android runtime will free up about 14 GiB of space.
+      - name: Free up storage
+        run: sudo rm -rf /usr/local/lib/android
+
       - name: Build container and push to local registry
         env:
           CONTAINER: ${{ env.NAME }}:${{ env.TAG }}
