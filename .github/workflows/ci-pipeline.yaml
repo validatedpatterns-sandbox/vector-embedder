@@ -111,9 +111,6 @@ jobs:
             -e "xpack.security.enabled=false" \
             -e "xpack.security.http.ssl.enabled=false" \
             -e "ELASTIC_PASSWORD=changeme" \
-            -e "ES_JAVA_OPTS=-Xms1g -Xmx2g" \
-            -e "http.max_content_length=100mb" \
-            -e "http.timeout=60s" \
             -p 9200:9200 \
             docker.elastic.co/elasticsearch/elasticsearch:8.12.1
 
@@ -125,7 +122,7 @@ jobs:
             qdrant/qdrant
 
       - name: Wait for DB to start
-        run: sleep 30
+        run: sleep 60
 
       - name: Run embed job
         env:
