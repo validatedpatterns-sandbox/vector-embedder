@@ -85,4 +85,4 @@ class ElasticProvider(DBProvider):
         Args:
             docs (List[Document]): List of documents to index.
         """
-        self.db.add_documents(docs)
+        self.db.add_documents(documents=docs)
