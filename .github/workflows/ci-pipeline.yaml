@@ -94,14 +94,14 @@ jobs:
             -e POSTGRES_PASSWORD=pass \
             -e POSTGRES_DB=mydb \
             -p 5432:5432 \
-            ankane/pgvector
+            pgvector/pgvector:0.8.1-pg18-trixie
 
       - name: Start Redis
         if: matrix.db == 'redis'
         run: |
           podman run -d --name redis-test \
             -p 6379:6379 \
-            redis/redis-stack-server:6.2.6-v19
+            redis/redis-stack-server:7.2.0-v19
 
       - name: Start Elasticsearch
         if: matrix.db == 'elastic'
@@ -119,7 +119,7 @@ jobs:
         run: |
           podman run -d --name qdrant-test \
             -p 6333:6333 \
-            qdrant/qdrant
+            qdrant/qdrant:latest-unprivileged
 
       - name: Wait for DB to start
         run: sleep 30
