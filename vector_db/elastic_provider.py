@@ -65,12 +65,18 @@ class ElasticProvider(DBProvider):
         """
         super().__init__(embeddings)
 
+        # We use an incresed timeout since resources are constrained in CI environments
+        es_params = {
+            "timeout": 60,
+        }
+
         self.db = ElasticsearchStore(
             embedding=self.embeddings,
             es_url=url,
             es_user=user,
             es_password=password,
             index_name=index,
+            es_params=es_params,
         )
 
         logger.info("Connected to Elasticsearch at %s (index: %s)", url, index)
