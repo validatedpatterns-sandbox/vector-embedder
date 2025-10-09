@@ -65,18 +65,12 @@ class ElasticProvider(DBProvider):
         """
         super().__init__(embeddings)
 
-        # We use an incresed timeout since resources are constrained in CI environments
-        es_params = {
-            "timeout": 600,
-        }
-
         self.db = ElasticsearchStore(
             embedding=self.embeddings,
             es_url=url,
             es_user=user,
             es_password=password,
             index_name=index,
-            es_params=es_params,
         )
 
         logger.info("Connected to Elasticsearch at %s (index: %s)", url, index)
@@ -91,11 +85,4 @@ class ElasticProvider(DBProvider):
         Args:
             docs (List[Document]): List of documents to index.
         """
-        batch_size = 50
-        for i in range(0, len(docs), batch_size):
-            batch = docs[i : i + batch_size]
-            try:
-                self.db.add_documents(batch)
-            except Exception:
-                logger.exception("Failed to insert batch starting at index %s", i)
-                raise
+        self.db.add_documents(documents=docs)
