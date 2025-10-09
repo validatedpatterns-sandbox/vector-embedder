@@ -67,7 +67,7 @@ class ElasticProvider(DBProvider):
 
         # We use an incresed timeout since resources are constrained in CI environments
         es_params = {
-            "timeout": 60,
+            "timeout": 600,
         }
 
         self.db = ElasticsearchStore(
@@ -91,4 +91,11 @@ class ElasticProvider(DBProvider):
         Args:
             docs (List[Document]): List of documents to index.
         """
-        self.db.add_documents(docs)
+        batch_size = 50
+        for i in range(0, len(docs), batch_size):
+            batch = docs[i : i + batch_size]
+            try:
+                self.db.add_documents(batch)
+            except Exception:
+                logger.exception("Failed to insert batch starting at index %s", i)
+                raise
