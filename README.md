@@ -1,6 +1,6 @@
 # 📚 vector-embedder
 
-![Version: 1.0.1](https://img.shields.io/badge/Version-1.0.1-informational?style=flat-square)
+![Version: 1.0.2](https://img.shields.io/badge/Version-1.0.2-informational?style=flat-square)
 [![Quay Repository](https://img.shields.io/badge/Quay.io-vector--embedder-blue?logo=quay)](https://quay.io/repository/validatedpatterns/vector-embedder)
 [![CI Pipeline](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml/badge.svg?branch=main)](https://github.com/validatedpatterns-sandbox/vector-embedder/actions/workflows/ci-pipeline.yaml)
 
