@@ -160,6 +160,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Free up storage
+        run: sudo rm -rf /usr/local/lib/android
+
       - name: Download image
         uses: actions/download-artifact@v5
         with:
